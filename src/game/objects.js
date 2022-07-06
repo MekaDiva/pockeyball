@@ -21,8 +21,8 @@ export default class Objects extends THREE.Object3D {
         this.update = this.update.bind(this);
         this.destroy = this.destroy.bind(this);
 
-        this.addPath = this.addPath.bind(this);
         this.addBasicGeometries = this.addBasicGeometries.bind(this);
+        this.addGlbModel = this.addGlbModel.bind(this);
 
         this.visualObjectsContainer = new THREE.Object3D();
         this.add(this.visualObjectsContainer);
@@ -33,11 +33,17 @@ export default class Objects extends THREE.Object3D {
         this.awardsContainer = new THREE.Object3D();
         this.add(this.awardsContainer);
 
+        // Array of cloud
+        this.cloudArray = [];
+
         // The mesh model of the cloud0
         this.cloud0 = null;
 
         // The mesh model of the cloud1
         this.cloud1 = null;
+
+        // Array of tree
+        this.treeArray = [];
 
         // The mesh model of the tree0
         this.tree0 = null;
@@ -50,6 +56,9 @@ export default class Objects extends THREE.Object3D {
 
         // The mesh model of the branche
         this.branche = null;
+
+        // The basic path of for the player
+        this.basicPath = null;
 
         // Init all the loaders
         this.textureLoader = new THREE.TextureLoader();
@@ -82,35 +91,45 @@ export default class Objects extends THREE.Object3D {
 
         // Load all the glb object meshes
         const cloudMaterial = new THREE.MeshToonMaterial({ color: 0xffffff });
-        this.cloud0 = (await this.glftLoader.loadAsync(cloud0GlbPath)).scene.children[1];
-        this.cloud0.material = cloudMaterial;
-        this.cloud0.receiveShadow = true;
-        this.cloud0.castShadow = true;
 
-        this.cloud1 = (await this.glftLoader.loadAsync(cloud1GlbPath)).scene.children[1];
-        this.cloud1.material = cloudMaterial;
-        this.cloud1.receiveShadow = true;
-        this.cloud1.castShadow = true;
+        this.cloud0 = await this.addGlbModel(cloud0GlbPath, cloudMaterial, this.cloudArray);
+        this.cloud1 = await this.addGlbModel(cloud1GlbPath, cloudMaterial, this.cloudArray);
 
         const treeTexture = this.textureLoader.load(treeTexturePath);
-        const treeMaterial = new THREE.MeshBasicMaterial({ map: treeTexture, side: THREE.DoubleSide});
-        this.tree0 = (await this.glftLoader.loadAsync(tree0GlbPath)).scene.children[1];
-        this.tree0.material = treeMaterial;
-        this.tree0.receiveShadow = true;
-        this.tree0.castShadow = true;
+        const treeMaterial = new THREE.MeshBasicMaterial({ map: treeTexture, side: THREE.DoubleSide });
 
-        this.tree1 = (await this.glftLoader.loadAsync(tree1GlbPath)).scene.children[1];        
-        this.tree2 = (await this.glftLoader.loadAsync(tree2GlbPath)).scene.children[1];  
-        this.branche = (await this.glftLoader.loadAsync(brancheGlbPath)).scene.children[1];      
+        this.tree0 = await this.addGlbModel(tree0GlbPath, treeMaterial, this.treeArray);
+        this.tree1 = await this.addGlbModel(tree1GlbPath, treeMaterial, this.treeArray);
+        this.tree2 = await this.addGlbModel(tree2GlbPath, treeMaterial, this.treeArray);
+
+        this.branche = await this.addGlbModel(brancheGlbPath, treeMaterial);
 
         // Add cloud to the scene
-        var cloud = this.cloud0.clone();
-        cloud.position.set(10, 10, 10);
-        //this.visualObjectsContainer.add(cloud);
+        const centerOfCloud = new THREE.Vector3(0, sceneConfiguration.cloudHeight, 0);
+        for (let index = 0; index < sceneConfiguration.cloudNumber; index++) {
+            var positionOfCloud = Tools.randomSurfacePoint(centerOfCloud, sceneConfiguration.cloudRange);
+            var cloudType = Tools.randomNum(0, 1);
+            var cloud = this.cloudArray[cloudType].clone();
+            cloud.position.copy(positionOfCloud);
+            this.visualObjectsContainer.add(cloud);
+        }
 
         // Add tree to scene
-        var tree = this.tree0.clone();
-        this.visualObjectsContainer.add(tree);
+        const centerOfForest = new THREE.Vector3(0, 0, 0);
+        for (let index = 0; index < sceneConfiguration.treeNumber; index++) {
+            var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange);
+            var treeType = Tools.randomNum(0, 2);
+            var tree = this.treeArray[treeType].clone();
+            tree.position.copy(positionOfTree);
+            this.visualObjectsContainer.add(tree);
+        }
+
+        // Add the basic path
+        var geometry = new THREE.BoxGeometry(1, sceneConfiguration.courseHeight, 1);
+        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0.1})
+        this.basicPath = this.addBasicGeometries(geometry, material);
+        this.basicPath.position.set(0, 0.5 * sceneConfiguration.courseHeight, 0);
+        Game.scene.add(this.basicPath);
     }
 
     update() {
@@ -133,44 +152,22 @@ export default class Objects extends THREE.Object3D {
         }
     }
 
-    addPath() {
-
-    }
-
-    addBasicGeometries(elements) {
-        for (let i = 0; i < elements.length; i++) {
-            const element = elements[i];
-
-            const material = new THREE.MeshStandardMaterial({ color: element.color });
-            material.metalness = 0.5;
-
-            const mesh = new THREE.Mesh(element.geometry, material);
-            mesh.position.copy(element.position);
+    addBasicGeometries(geometry, material) {
+            const mesh = new THREE.Mesh(geometry, material);
             mesh.castShadow = true;
-            if (element.type == "obstacle") {
-                this.obstaclesContainer.add(mesh);
-            } else if (element.type == "award") {
-                this.awardsContainer.add(mesh);
-            }
-        }
+
+            return mesh
     }
 
-    addGlbModel(elements) {
-        for (let index = 0; index < elements.length; index++) {
-            const element = elements[index];
-
-            const fbxModel = element.mesh.clone();
-            const fbxMaterial = new THREE.MeshToonMaterial({ color: 0x636363 });
-            fbxModel.material = fbxMaterial;
-            fbxModel.castShadow = true;
-            fbxModel.position.copy(element.position);
-            fbxModel.scale.copy(element.size);
-
-            if (element.type == "obstacle") {
-                this.obstaclesContainer.add(fbxModel);
-            } else if (element.type == "award") {
-                this.awardsContainer.add(fbxModel);
-            }
+    async addGlbModel(filePath, material, arrayContainer = null) {
+        var glbMesh = (await this.glftLoader.loadAsync(filePath)).scene.children[1];
+        glbMesh.material = material;
+        glbMesh.receiveShadow = true;
+        glbMesh.castShadow = true;
+        if (arrayContainer != null) {
+            arrayContainer.push(glbMesh);
         }
+
+        return glbMesh;
     }
 }

@@ -1,3 +1,4 @@
+import * as THREE from "three";
 class Tools {
     constructor() {
         this.clamp = this.clamp.bind(this);
@@ -59,6 +60,16 @@ class Tools {
                 break;
         }
     }
+
+    // Returns the point of a surface cemtered at vector3Position with side length
+    randomSurfacePoint(vector3Position, length){
+        var u = Math.random();
+        var v = Math.random();
+        var x = vector3Position.x + (u - 0.5) * length;
+        var y = vector3Position.y;
+        var z = vector3Position.z + (v - 0.5) * length;
+        return new THREE.Vector3(x, y, z);
+     }
 }
 
 export default new Tools();

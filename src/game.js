@@ -16,7 +16,7 @@ export const sceneConfiguration = {
     // Stage of the game
     stageGame: {
         readyStage: 0,
-        runningStage: 1,
+        playingStage: 1,
         finishStage: 2,
     },
 
@@ -26,29 +26,35 @@ export const sceneConfiguration = {
     // Whether the game is on pause
     isPause: false,
 
+    // The height of the cloud
+    cloudHeight: 100,
+
+    // The range of cloud
+    cloudRange: 300,
+
+    // The total number of cloud
+    cloudNumber: 50,
+
+    // The range of trees
+    treeRange: 100,
+
+    // The total number of trees
+    treeNumber: 100,
+
     // Whether the player is moving
     playerMoving: false,
 
-    // Collected game data
-    data: {
-        // How many oil the player has collected on this run
-        oilCollected: 0,
-    },
+    // How many score points
+    playerScore: 0,
 
-    // The target of number of oil collected
-    targetOilCollected: 10,
-
-    // The length of the current level, increases as levels go up
-    courseLength: 500,
+    // The height of the current level, increases as levels go up
+    courseHeight: 500,
 
     // How far the player is through the current level, initialises to zero.
     courseProgress: 0,
 
     // How for between each line of Obstacles
     lengthBetweenObstacle: 15,
-
-    // Number of maximum oil in a line
-    maximumOilInLine: 3,
 
     // Whether the level has finished
     levelOver: false,
@@ -58,9 +64,6 @@ export const sceneConfiguration = {
 
     // Whether the start animation is playing (the circular camera movement while looking at the ship)
     cameraStartAnimationPlaying: false,
-
-    // The current speed of the player, unit/second
-    playerSpeed: 10,
 };
 
 class Game extends THREE.EventDispatcher {
@@ -117,7 +120,7 @@ class Game extends THREE.EventDispatcher {
         // Scene configuration
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x008011);
-        this.scene.fog = new THREE.Fog(0x008011, 10, 50);
+        this.scene.fog = new THREE.Fog(0x008011, 1, 500);
 
         // Light configuration
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
@@ -128,7 +131,7 @@ class Game extends THREE.EventDispatcher {
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 1);
         dirLight.color.setHSL(0.1, 1, 0.95);
-        dirLight.position.set(1, 1.75, 1);
+        dirLight.position.set(-1, 1.75, 1);
         dirLight.position.multiplyScalar(30);
         this.scene.add(dirLight);
 
@@ -157,7 +160,7 @@ class Game extends THREE.EventDispatcher {
         document.body.appendChild(this.renderer.domElement);
 
         // Camera
-        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(5, 4, 5);
 
         const axesHelper = new THREE.AxesHelper(3);
