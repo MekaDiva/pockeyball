@@ -242,7 +242,7 @@ class Game extends THREE.EventDispatcher {
     onPointerDown(e) {
         //console.log("onPointerDown", e);
         this.positionRatioStart = e.clientY / window.innerHeight;
-        this.player.press(0);
+        this.player.onPointerDown();
     }
 
     onPointerMove(e) {
@@ -251,12 +251,12 @@ class Game extends THREE.EventDispatcher {
         let positionRatioDelta = actualPositionRatio - this.positionRatioStart;
         let forceFactor = Tools.remapValue(0, 0.3, positionRatioDelta, 0, 1);
 
-        this.player.press(forceFactor);
+        this.player.onPointerMove(forceFactor);
     }
 
     onPointerCancel(e) {
         //console.log("onPointerCancel", e);
-        this.player.release();
+        this.player.onPointerCancel();
     }
 
     update() {

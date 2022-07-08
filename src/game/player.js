@@ -38,6 +38,12 @@ export default class Player extends THREE.Object3D {
 
         // The ballBendClip
         this.ballBendClip = null;
+
+        // Is the beak is being pressed
+        this.isBeingPressed = false;
+
+        // Is the beak is attached to the column
+        this.isBeakAttached = true;
     }
 
     async init() {
@@ -51,7 +57,7 @@ export default class Player extends THREE.Object3D {
         this.beakScene.rotation.y = Math.PI;
         this.beakScene.position.set(0, 0, 0);
         this.mixer = new THREE.AnimationMixer(this.beakScene);
-        console.log(this.beakScene);
+        //console.log(this.beakScene);
 
         // Load the beak model
         this.beakScene.children[0].children[2].material = beakMaterial;
@@ -89,7 +95,6 @@ export default class Player extends THREE.Object3D {
 
         this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[1]);
 
-
         this.beakBendClip.play();
         this.ballBendClip.play();
         //console.log(this.bendClip.getClip().duration);
@@ -98,35 +103,62 @@ export default class Player extends THREE.Object3D {
     }
 
     update() {
-        if (this.mixer != null) {
-            //this.mixer.setTime(0);
-            //this.mixer.update(this.clock.getDelta());
+        if (this.isBeingPressed) {
+            // Vibrate the beak
+            console.log("Vibrate");
         }
     }
 
     destroy() {}
 
+    // On pointer down
+    onPointerDown() {
+        if (this.isBeakAttached) {
+            // Begin the pressing
+            this.onPointerMove(0);
+            this.isBeingPressed = true;
+        } else {
+            // Stab the beak to the column
+            this.stab();
+            this.isBeakAttached = true;
+        }
+    }
+
     // Press the ball with factor from 0 to 1
-    press(factor) {
-        if (this.mixer != null) {
-            this.mixer.setTime(factor);
+    onPointerMove(factor) {
+        if (this.isBeakAttached) {
+            // Play the animation according to the control
+            if (this.mixer != null) {
+                this.mixer.setTime(factor);
+            }
         }
     }
 
     // Release the ball
-    release() {
-        if (this.mixer != null) {
-            this.mixer.setTime(0);
+    onPointerCancel() {
+        if (this.isBeakAttached && this.isBeingPressed) {
+            // Release the ball into the sky
+            if (this.mixer != null) {
+                this.mixer.setTime(0);
+            }
+
+            this.withdraw();
+            this.isBeingPressed = false;
+            this.isBeakAttached = false;
+        } else {
+
         }
     }
 
     // Stab the peak
     stab() {
-        gsap.to(this.beakScene.scale, { duration: 0.2, z: 1, ease: "elastic" });
+        console.log("stab");
+        gsap.to(this.beakScene.children[0].scale, { duration: 1, z: 1, ease: "elastic" });
     }
 
     // withdraw the peak
     withdraw() {
-        gsap.to(this.beakScene.scale, { duration: 0.2, z: 0, ease: "expo" });
+        console.log("withdraw");
+        gsap.to(this.beakScene.children[0].scale, { duration: 1, z: 0, ease: "expo" });
     }
 }
