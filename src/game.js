@@ -41,8 +41,8 @@ export const sceneConfiguration = {
     // The total number of trees
     treeNumber: 100,
 
-    // Whether the player is moving
-    playerMoving: false,
+    // Whether the game is started
+    gameStarted: false,
 
     // How many score points
     playerScore: 0,
@@ -52,9 +52,6 @@ export const sceneConfiguration = {
 
     // How far the player is through the current level, initialises to zero.
     courseProgress: 0,
-
-    // How for between each line of Obstacles
-    lengthBetweenObstacle: 15,
 
     // Whether the level has finished
     levelOver: false,
@@ -76,9 +73,11 @@ class Game extends THREE.EventDispatcher {
         this.keypress = this.keypress.bind(this);
         this.update = this.update.bind(this);
         this.playableResize = this.playableResize.bind(this);
+        this.onPointerDown = this.onPointerDown.bind(this);
+        this.onPointerMove = this.onPointerMove.bind(this);
+        this.onPointerCancel = this.onPointerCancel.bind(this);
         this.reset = this.reset.bind(this);
         this.pause = this.pause.bind(this);
-        this.mousemove = this.mousemove.bind(this);
         this.movePlayer = this.movePlayer.bind(this);
         this.playerCollectOil = this.playerCollectOil.bind(this);
         this.playerTouchObstacle = this.playerTouchObstacle.bind(this);
@@ -91,7 +90,7 @@ class Game extends THREE.EventDispatcher {
         this.camera = null;
         this.cameraControls = null;
         this.stats = null;
-        this.positionRatio = null;
+        this.positionRatioStart = null;
     }
 
     init() {
@@ -161,17 +160,18 @@ class Game extends THREE.EventDispatcher {
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.camera.position.set(5, 4, 5);
+        this.camera.position.set(10, 4, 10);
+        this.camera.lookAt(0, 2, 0);
 
         const axesHelper = new THREE.AxesHelper(3);
         this.scene.add(axesHelper);
 
-        this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.cameraControls.enablePan = false;
-        this.cameraControls.enableZoom = true;
-        //this.cameraControls.maxPolarAngle = Math.PI / 2;
-        this.cameraControls.target.set(0, 2, 0);
-        this.cameraControls.update();
+        // this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
+        // this.cameraControls.enablePan = false;
+        // this.cameraControls.enableZoom = true;
+        // //this.cameraControls.maxPolarAngle = Math.PI / 2;
+        // this.cameraControls.target.set(0, 2, 0);
+        // this.cameraControls.update();
     }
 
     initGame() {
@@ -180,7 +180,6 @@ class Game extends THREE.EventDispatcher {
 
         // Add the surrounding objects
         this.objects = new Objects();
-        
         this.objects.init();
 
         this.scene.add(this.objects);
@@ -189,8 +188,6 @@ class Game extends THREE.EventDispatcher {
         this.player = new Player();
         this.player.init();
 
-        this.player.addPlayer();
-
         this.scene.add(this.player);
     }
 
@@ -198,11 +195,24 @@ class Game extends THREE.EventDispatcher {
         // Add event handlers for the resize of window
         window.addEventListener("resize", this.playableResize, false);
 
+        this.renderer.domElement.style.touchAction = 'none'; // disable touch scroll
+
         // Add event handlers for clicking
         document.addEventListener("keypress", this.keypress, false);
 
-        // Add event handlers for mousemove
-        document.addEventListener("mousemove", this.mousemove, false);
+        // Add event handlers for pointerdown
+        document.addEventListener("pointerdown", this.onPointerDown);
+
+        // Add event handlers for pointermove
+        document.addEventListener("pointermove", this.onPointerMove);
+
+        // Add event handlers for pointerup
+        document.addEventListener("pointerup", this.onPointerCancel);
+
+        // Add event handlers for pointer leave the screen
+        document.addEventListener("pointerleave", this.onPointerCancel);
+
+        //document.style.touchAction = 'none';
     }
 
     debug() {
@@ -229,8 +239,24 @@ class Game extends THREE.EventDispatcher {
         // }
     }
 
-    mousemove(e) {
-        this.positionRatio = e.clientX / window.innerWidth;
+    onPointerDown(e) {
+        //console.log("onPointerDown", e);
+        this.positionRatioStart = e.clientY / window.innerHeight;
+        this.player.press(0);
+    }
+
+    onPointerMove(e) {
+        //console.log("onPointerMove", e);
+        let actualPositionRatio = e.clientY / window.innerHeight;
+        let positionRatioDelta = actualPositionRatio - this.positionRatioStart;
+        let forceFactor = Tools.remapValue(0, 0.3, positionRatioDelta, 0, 1);
+
+        this.player.press(forceFactor);
+    }
+
+    onPointerCancel(e) {
+        //console.log("onPointerCancel", e);
+        this.player.release();
     }
 
     update() {
@@ -250,15 +276,7 @@ class Game extends THREE.EventDispatcher {
             // console.log(this.renderer.info.render.triangles + " tri");
             // console.log(this.renderer.info.render.calls+ " call");
 
-            if (sceneConfiguration.playerMoving) {
-                // Move the scene to the back
-                this.objects.translateZ(-sceneConfiguration.playerSpeed / sceneConfiguration.FPS);
-
-                // Move the player according to the mouse ratio
-                this.movePlayer(this.positionRatio);
-
-                // Detect the collision
-                CollisionDetection.detectCollisions();
+            if (sceneConfiguration.gameStarted) {
             }
         }
     }
@@ -278,31 +296,16 @@ class Game extends THREE.EventDispatcher {
 
     start() {
         console.log("start");
-
-        sceneConfiguration.playerMoving = true;
-        this.player.idleClip.stop();
-        this.player.runClip.play();
     }
 
     reset() {
         console.log("reset");
 
         // Reset the player
-        sceneConfiguration.playerMoving = false;
-        this.player.position.set(0, 0, 0);
-        this.player.runClip.stop();
-        this.player.idleClip.play();
-        this.objects.position.set(0, 0, 0);
 
         // Reset all the objects
-        this.objects.destroy();
-        this.objects.init();
-        this.objects.addPath(sceneConfiguration.courseLength);
 
         // Reset the UI
-        sceneConfiguration.data.oilCollected = 0;
-        Ui.showCurrentOilScore();
-        Ui.toggleStartButton(true);
     }
 
     pause() {
