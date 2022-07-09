@@ -33,17 +33,26 @@ export default class Player extends THREE.Object3D {
         // The animation mixer
         this.mixer = null;
 
-        // The beakBendClip
+        // The bend of the beak
         this.beakBendClip = null;
 
-        // The ballBendClip
+        // The clip of successfully stab in the path
+        this.beakStabSuccessClip = null;
+
+        // The clip of failling to stab in the path
+        this.beakStabFailedClip = null;
+
+        // The clip of withdraw the beak
+        this.beakWithdrawClip = null;
+
+        // The bend of the ball
         this.ballBendClip = null;
 
         // Is the beak is being pressed
         this.isBeingPressed = false;
 
         // Is the beak is attached to the column
-        this.isBeakAttached = true;
+        this.isAttached = true;
     }
 
     async init() {
@@ -53,6 +62,7 @@ export default class Player extends THREE.Object3D {
         this.beakGlb = await this.glftLoader.loadAsync(beakGlbFilePath);
         const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03 });
         this.beakScene = this.beakGlb.scene;
+        //console.log(this.beakGlb);
         this.beakScene.scale.set(10, 10, 10);
         this.beakScene.rotation.y = Math.PI;
         this.beakScene.position.set(0, 0, 0);
@@ -63,6 +73,16 @@ export default class Player extends THREE.Object3D {
         this.beakScene.children[0].children[2].material = beakMaterial;
         this.beakScene.children[0].children[2].castShadow = true;
         this.beakBendClip = this.mixer.clipAction(this.beakGlb.animations[0]);
+        //this.beakBendClip.loop = new THREE.LoopOnce();
+        this.beakStabFailedClip = this.mixer.clipAction(this.beakGlb.animations[1]);
+        this.beakStabFailedClip.setLoop(THREE.LoopOnce);
+        this.beakStabFailedClip.clampWhenFinished = true;
+        this.beakStabSuccessClip = this.mixer.clipAction(this.beakGlb.animations[2]);
+        this.beakStabSuccessClip.setLoop(THREE.LoopOnce);
+        this.beakStabSuccessClip.clampWhenFinished = true;
+        this.beakWithdrawClip = this.mixer.clipAction(this.beakGlb.animations[3]);
+        this.beakWithdrawClip.setLoop(THREE.LoopOnce);
+        this.beakWithdrawClip.clampWhenFinished = true;
 
         // Load the ball model
         const ballTexture = this.textureLoader.load(ballTexturePath);
@@ -89,44 +109,68 @@ export default class Player extends THREE.Object3D {
         //add material setting
         const ballMaterial = new THREE.MeshPhysicalMaterial(ballMat);
 
-        this.beakScene.children[3].material = ballMaterial;
+        this.beakScene.children[1].material = ballMaterial;
 
-        this.beakScene.children[3].castShadow = true;
+        this.beakScene.children[1].castShadow = true;
 
-        this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[1]);
+        this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[4]);
 
-        this.beakBendClip.play();
-        this.ballBendClip.play();
         //console.log(this.bendClip.getClip().duration);
 
         this.add(this.beakScene);
+
+        // this.beakBendClip.play();
+        // this.ballBendClip.play();
     }
 
     update() {
-        if (this.isBeingPressed) {
-            // Vibrate the beak
-            console.log("Vibrate");
+        if (this.mixer != null) {
+            if (this.isAttached && this.isBeingPressed) {
+                // If the beak is attached and is being pressed, no need to update
+                this.clock.getDelta();
+            }
+            
+            else {
+                // If the beak is not attached, update
+                this.mixer.update(this.clock.getDelta());
+            }
         }
+
+        //console.log(this.mixer.time);
+        // console.log("isAttached", this.isAttached);
+        // console.log("isBeingPressed", this.isBeingPressed);
     }
 
     destroy() {}
 
     // On pointer down
     onPointerDown() {
-        if (this.isBeakAttached) {
-            // Begin the pressing
-            this.onPointerMove(0);
+        if (this.isAttached && !this.isBeingPressed) {
+            // If the beak is attached but not being pressed
+
+            this.beakStabSuccessClip.stop();
+            this.beakStabFailedClip.stop();
+            this.beakWithdrawClip.stop();
+            this.beakBendClip.play();
+            this.ballBendClip.play();
+
+            this.isAttached = true;
             this.isBeingPressed = true;
-        } else {
-            // Stab the beak to the column
+        }
+
+        if (!this.isAttached && !this.isBeingPressed) {
+            // If the beak is not attached and not being pressed in the air
+
             this.stab();
-            this.isBeakAttached = true;
+
+            this.isAttached = true;
+            this.isBeingPressed = false;
         }
     }
 
     // Press the ball with factor from 0 to 1
     onPointerMove(factor) {
-        if (this.isBeakAttached) {
+        if (this.isAttached && this.isBeingPressed) {
             // Play the animation according to the control
             if (this.mixer != null) {
                 this.mixer.setTime(factor);
@@ -136,16 +180,16 @@ export default class Player extends THREE.Object3D {
 
     // Release the ball
     onPointerCancel() {
-        if (this.isBeakAttached && this.isBeingPressed) {
-            // Release the ball into the sky
-            if (this.mixer != null) {
-                this.mixer.setTime(0);
-            }
-
+        if (this.isAttached && this.isBeingPressed) {
+            // If the ball is attached and being pressed, release
             this.withdraw();
+
+            this.isAttached = false;
             this.isBeingPressed = false;
-            this.isBeakAttached = false;
-        } else {
+        }
+
+        if (this.isAttached && !this.isBeingPressed) {
+            // If the ball is attached and not being pressed
 
         }
     }
@@ -153,12 +197,22 @@ export default class Player extends THREE.Object3D {
     // Stab the peak
     stab() {
         console.log("stab");
-        gsap.to(this.beakScene.children[0].scale, { duration: 1, z: 1, ease: "elastic" });
+        this.beakBendClip.stop();
+        this.ballBendClip.stop();
+        this.beakWithdrawClip.stop();
+
+        this.beakStabSuccessClip.reset();
+        this.beakStabSuccessClip.play();
     }
 
     // withdraw the peak
     withdraw() {
         console.log("withdraw");
-        gsap.to(this.beakScene.children[0].scale, { duration: 1, z: 0, ease: "expo" });
+        this.beakBendClip.stop();
+        this.ballBendClip.stop();
+        this.beakStabSuccessClip.stop();
+
+        this.beakWithdrawClip.reset();
+        this.beakWithdrawClip.play();
     }
 }

@@ -11,7 +11,7 @@ import CollisionDetection from "game/collisionDetection";
 const skyFloorTexture = process.env.PUBLIC_URL + "/img/sky.jpg";
 
 export const sceneConfiguration = {
-    FPS: 30,
+    FPS: 60,
 
     // Stage of the game
     stageGame: {
