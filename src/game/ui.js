@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import Game, { sceneConfiguration } from "../game";
 
-const pathOilTexture = process.env.PUBLIC_URL + "/img/Oil.png";
+const add240PointsImgPath = process.env.PUBLIC_URL + "/img/240.png";
+const score2ImgPath = process.env.PUBLIC_URL + "/img/2.png";
+const score5ImgPath = process.env.PUBLIC_URL + "/img/5.png";
+const score11ImgPath = process.env.PUBLIC_URL + "/img/11.png";
+const score20ImgPath = process.env.PUBLIC_URL + "/img/20.png";
 
 class Ui extends THREE.EventDispatcher {
     constructor() {
@@ -14,32 +18,20 @@ class Ui extends THREE.EventDispatcher {
     }
 
     init() {
+        // Add score for the oil collected
+        let gameScore = document.createElement("p");
+        gameScore.id = "gameScore";
+        gameScore.innerText = "0";
+        gameScore.style.fontSize = "40px";
+        gameScore.style.color = "black";
+        gameScore.style.position = "absolute";
+        gameScore.style.textAlign = "center";
+        gameScore.style.left = "calc(50% - 50px)";
+        gameScore.style.top = "calc(10%)";
+        gameScore.style.width = "100px";
+        gameScore.style.height = "30px";
 
-        // // Add the oil image for the score
-        // let oilImg = document.createElement("IMG");
-        // oilImg.src = pathOilTexture;
-        // oilImg.style.position = "absolute";
-        // oilImg.style.left = "calc(0%)";
-        // oilImg.style.bottom = "calc(0%)";
-        // oilImg.style.width = "100px";
-        // oilImg.style.height = "100px";
-
-        // document.body.appendChild(oilImg);
-
-        // // Add score for the oil collected
-        // let gameScore = document.createElement("p");
-        // gameScore.id = "gameScore";
-        // gameScore.innerText = "0 / 10";
-        // gameScore.style.fontSize = "40px";
-        // gameScore.style.color = "black";
-        // gameScore.style.position = "absolute";
-        // gameScore.style.textAlign = "center";
-        // gameScore.style.left = "calc(0%)";
-        // gameScore.style.bottom = "calc(0%)";
-        // gameScore.style.width = "300px";
-        // gameScore.style.height = "30px";
-
-        // document.body.appendChild(gameScore);
+        document.body.appendChild(gameScore);
     }
 
     toggleStartButton(isActive) {

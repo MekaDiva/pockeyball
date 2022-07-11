@@ -71,18 +71,18 @@ export default class Objects extends THREE.Object3D {
         this.fixedTimeStep = 1.0 / Game.FPS; // seconds
         this.maxSubSteps = 10;
 
-        // // Add ground to the scene
+        // Add ground to the scene
 
-        // const floorTexture = this.textureLoader.load(floorTexturePath);
-        // floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        // floorTexture.repeat.set(1000, 1000);
-        // floorTexture.anisotrophy = 16;
-        // floorTexture.encoding = THREE.sRGBEncoding;
-        // const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
-        // const floorMesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(1000, 1000), floorMaterial);
-        // floorMesh.rotation.x = -Math.PI / 2;
-        // floorMesh.receiveShadow = true;
-        // this.visualObjectsContainer.add(floorMesh);
+        const floorTexture = this.textureLoader.load(floorTexturePath);
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(10000, 10000);
+        floorTexture.anisotrophy = 16;
+        floorTexture.encoding = THREE.sRGBEncoding;
+        const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
+        const floorMesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(10000, 10000), floorMaterial);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.receiveShadow = true;
+        this.visualObjectsContainer.add(floorMesh);
 
         // Add sky to the scene
         const skyTexture = this.textureLoader.load(skyTexturePath);
@@ -96,7 +96,7 @@ export default class Objects extends THREE.Object3D {
         this.cloud1 = await this.addGlbModel(cloud1GlbPath, cloudMaterial, this.cloudArray);
 
         const treeTexture = this.textureLoader.load(treeTexturePath);
-        const treeMaterial = new THREE.MeshBasicMaterial({ map: treeTexture, side: THREE.DoubleSide });
+        const treeMaterial = new THREE.MeshStandardMaterial({ map: treeTexture, side: THREE.DoubleSide });
 
         this.tree0 = await this.addGlbModel(tree0GlbPath, treeMaterial, this.treeArray);
         this.tree1 = await this.addGlbModel(tree1GlbPath, treeMaterial, this.treeArray);
@@ -114,22 +114,53 @@ export default class Objects extends THREE.Object3D {
             this.visualObjectsContainer.add(cloud);
         }
 
-        // // Add tree to scene
-        // const centerOfForest = new THREE.Vector3(0, 0, - sceneConfiguration.treeRange / 2);
-        // for (let index = 0; index < sceneConfiguration.treeNumber; index++) {
-        //     var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange);
-        //     var treeType = Tools.randomNum(0, 2);
-        //     var tree = this.treeArray[treeType].clone();
-        //     tree.position.copy(positionOfTree);
-        //     this.visualObjectsContainer.add(tree);
-        // }
+        // Add tree to scene
+        const centerOfForest = new THREE.Vector3(0, 0, - sceneConfiguration.treeRange / 2 - 5);
+        for (let index = 0; index < sceneConfiguration.treeNumber; index++) {
+            var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange);
+            var treeType = Tools.randomNum(0, 2);
+            var tree = this.treeArray[treeType].clone();
+            tree.position.copy(positionOfTree);
+            this.visualObjectsContainer.add(tree);
+        }
 
         // Add the basic path
-        var geometry = new THREE.BoxGeometry(1, sceneConfiguration.courseHeight, 1);
-        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0.1 });
+        var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
+        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0.5 });
         this.basicPath = this.addBasicGeometries(geometry, material);
-        this.basicPath.position.set(0, 0.5 * sceneConfiguration.courseHeight, 0);
+        this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
         Game.scene.add(this.basicPath);
+
+        // Add the branche to the basic path
+        for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
+            var left0Right1 = Tools.randomNum(0, 1);
+            var yPosition = Math.random() * sceneConfiguration.pathHeight;
+            if (left0Right1 == 0) {
+                var branche = this.branche.clone();
+                branche.position.set(-1, yPosition + 0.5, 0);
+                this.visualObjectsContainer.add(branche);
+            }
+            if (left0Right1 == 1) {
+                var branche = this.branche.clone();
+                branche.rotation.y = Math.PI;
+                branche.position.set(1, yPosition + 0.5, 0);
+                this.visualObjectsContainer.add(branche);
+            }
+        }
+
+
+
+        // Add the grey block to the basic path
+
+        // Add the acceleration target to the basic path
+
+        // Add the red block to the basic path
+
+        // this.branche.position.set(-1, 3, 0);
+        // this.branche.rotation.y = Math.PI;
+        // this.branche.position.set(1, 3, 0);
+        // this.visualObjectsContainer.add(this.branche);
+
     }
 
     update() {
@@ -155,6 +186,7 @@ export default class Objects extends THREE.Object3D {
     addBasicGeometries(geometry, material) {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
+        mesh.receiveShadow = true;
 
         return mesh;
     }
@@ -162,7 +194,7 @@ export default class Objects extends THREE.Object3D {
     async addGlbModel(filePath, material, arrayContainer = null) {
         var glbMesh = (await this.glftLoader.loadAsync(filePath)).scene.children[1];
         glbMesh.material = material;
-        glbMesh.receiveShadow = true;
+        glbMesh.receiveShadow = false;
         glbMesh.castShadow = true;
         if (arrayContainer != null) {
             arrayContainer.push(glbMesh);

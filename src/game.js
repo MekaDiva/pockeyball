@@ -36,10 +36,16 @@ export const sceneConfiguration = {
     cloudNumber: 50,
 
     // The range of trees
-    treeRange: 100,
+    treeRange: 1000,
 
     // The total number of trees
-    treeNumber: 100,
+    treeNumber: 10000,
+
+    // The number of branche on the path, pay attention to the pathHeight
+    brancheNumber: 40,
+
+    // The number of obstacles on the path, pay attention to the pathHeight
+    obstacleNumber: 100,
 
     // Whether the game is started
     gameStarted: false,
@@ -47,11 +53,17 @@ export const sceneConfiguration = {
     // How many score points
     playerScore: 0,
 
+    // How much is the max speed up
+    ballMaxInitialSpeed: 30,
+
+    // The initial height of the ball attached to the path
+    ballInitialHeight: 3,
+
     // The height of the current level, increases as levels go up
-    courseHeight: 500,
+    pathHeight: 200,
 
     // How far the player is through the current level, initialises to zero.
-    courseProgress: 0,
+    pathProgress: 0,
 
     // Whether the level has finished
     levelOver: false,
@@ -78,10 +90,6 @@ class Game extends THREE.EventDispatcher {
         this.onPointerCancel = this.onPointerCancel.bind(this);
         this.reset = this.reset.bind(this);
         this.pause = this.pause.bind(this);
-        this.movePlayer = this.movePlayer.bind(this);
-        this.playerCollectOil = this.playerCollectOil.bind(this);
-        this.playerTouchObstacle = this.playerTouchObstacle.bind(this);
-        this.playerSuccess = this.playerSuccess.bind(this);
 
         this.objects = null;
         this.player = null;
@@ -130,7 +138,7 @@ class Game extends THREE.EventDispatcher {
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 1);
         dirLight.color.setHSL(0.1, 1, 0.95);
-        dirLight.position.set(-1, 1.75, 1);
+        dirLight.position.set(0.7, 1.75, 1);
         dirLight.position.multiplyScalar(30);
         this.scene.add(dirLight);
 
@@ -159,8 +167,8 @@ class Game extends THREE.EventDispatcher {
         document.body.appendChild(this.renderer.domElement);
 
         // Camera
-        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.camera.position.set(10, 4, 10);
+        this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera.position.set(4, 3, 9);
         this.camera.lookAt(0, 2, 0);
 
         const axesHelper = new THREE.AxesHelper(3);
@@ -314,57 +322,15 @@ class Game extends THREE.EventDispatcher {
         sceneConfiguration.isPause = true;
     }
 
-    movePlayer(positionRatio) {
-        // Reduce the control to the 0.2 to 0.8 of the screen width
-        let controlRatio = Tools.remapValue(0.2, 0.8, positionRatio, 0, 1);
-        //console.log("Control ratio: " + controlRatio);
+    dropBallOnGround() {
 
-        let playerX = Tools.lerp(2.5, -2.5, controlRatio);
-        // console.log("playerX: " + playerX);
-        this.player.position.set(playerX, 0, 0);
     }
 
-    playerCollectOil() {
-        sceneConfiguration.data.oilCollected += 1;
-        console.log("oilCollected: " + sceneConfiguration.data.oilCollected);
-        Ui.showCurrentOilScore();
+    touchRedBlock() {
 
-        if (sceneConfiguration.data.oilCollected == sceneConfiguration.targetOilCollected) {
-            this.playerSuccess();
-        }
     }
 
-    playerTouchObstacle() {
-        console.log("Mission failed");
 
-        sceneConfiguration.playerMoving = false;
-        this.player.runClip.stop();
-        this.player.idleClip.play();
-
-        Ui.toggleAlert(true, "Mission failed");
-        gsap.delayedCall(2, () => {
-            Ui.toggleAlert(false);
-        });
-        gsap.delayedCall(2, () => {
-            Ui.toggleResetButton(true);
-        });
-    }
-
-    playerSuccess() {
-        console.log("Mission success");
-
-        sceneConfiguration.playerMoving = false;
-        this.player.runClip.stop();
-        this.player.idleClip.play();
-
-        Ui.toggleAlert(true, "Mission success");
-        gsap.delayedCall(2, () => {
-            Ui.toggleAlert(false);
-        });
-        gsap.delayedCall(2, () => {
-            Ui.toggleResetButton(true);
-        });
-    }
 }
 
 export default new Game();

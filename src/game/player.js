@@ -2,12 +2,13 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { FlakesTexture } from "three/examples/jsm/textures/FlakesTexture.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import Game from "../game";
+import Game, { sceneConfiguration } from "../game";
+import Tools from "game/tools";
 
 const beakGlbFilePath = process.env.PUBLIC_URL + "/models/beakWithBall.glb";
 const ballTexturePath = process.env.PUBLIC_URL + "/img/ball.jpg";
 const ballLightMapPath = process.env.PUBLIC_URL + "/img/latexballoonmatcap.png";
-const ballEnvMapPath = process.env.PUBLIC_URL + "/img/2.png";
+const ballEnvMapPath = process.env.PUBLIC_URL + "/img/2_env.jpg";
 
 export default class Player extends THREE.Object3D {
     constructor() {
@@ -48,11 +49,22 @@ export default class Player extends THREE.Object3D {
         // The bend of the ball
         this.ballBendClip = null;
 
+        // The shake of the ball
+        this.ballShakeClip = null;
+
         // Is the beak is being pressed
         this.isBeingPressed = false;
 
         // Is the beak is attached to the column
         this.isAttached = true;
+
+        // The hight of the ball
+        this.ballHeight = 0;
+
+        // The initial height and initial speed and the initial time when launched into the sky
+        this.h0 = null;
+        this.v0 = null;
+        this.t0 = null;
     }
 
     async init() {
@@ -62,16 +74,28 @@ export default class Player extends THREE.Object3D {
         this.beakGlb = await this.glftLoader.loadAsync(beakGlbFilePath);
         const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03 });
         this.beakScene = this.beakGlb.scene;
-        //console.log(this.beakGlb);
+
+        // Add the beakScene to the player
+        this.add(this.beakScene);
+
+        // Add the camera as the child of the beakScene
+        this.add(Game.camera);
+
+        this.ballHeight = sceneConfiguration.ballInitialHeight;
+        this.position.set(0, this.ballHeight, 0);
+
+
+        console.log(this.beakGlb);
         this.beakScene.scale.set(10, 10, 10);
         this.beakScene.rotation.y = Math.PI;
-        this.beakScene.position.set(0, 0, 0);
+
         this.mixer = new THREE.AnimationMixer(this.beakScene);
         //console.log(this.beakScene);
 
         // Load the beak model
         this.beakScene.children[0].children[2].material = beakMaterial;
         this.beakScene.children[0].children[2].castShadow = true;
+        //this.beakScene.children[0].children[2].receiveShadow = true;
         this.beakBendClip = this.mixer.clipAction(this.beakGlb.animations[0]);
         //this.beakBendClip.loop = new THREE.LoopOnce();
         this.beakStabFailedClip = this.mixer.clipAction(this.beakGlb.animations[1]);
@@ -86,6 +110,7 @@ export default class Player extends THREE.Object3D {
 
         // Load the ball model
         const ballTexture = this.textureLoader.load(ballTexturePath);
+        const ballLightMapTexture = this.textureLoader.load(ballLightMapPath);
         const ballEnvMap = this.textureLoader.load(ballEnvMapPath);
         let texture = new THREE.CanvasTexture(new FlakesTexture());
         texture.wrapS = THREE.RepeatWrapping;
@@ -96,7 +121,7 @@ export default class Player extends THREE.Object3D {
         texture.repeat.y = 6;
 
         const ballMat = {
-            lightMap: ballTexture,
+            lightMap: ballLightMapTexture,
             clearcoat: 1.0,
             metalness: 0.9,
             roughness: 0.5,
@@ -110,17 +135,13 @@ export default class Player extends THREE.Object3D {
         const ballMaterial = new THREE.MeshPhysicalMaterial(ballMat);
 
         this.beakScene.children[1].material = ballMaterial;
-
         this.beakScene.children[1].castShadow = true;
+        //this.beakScene.children[1].receiveShadow = true;
 
         this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[4]);
-
-        //console.log(this.bendClip.getClip().duration);
-
-        this.add(this.beakScene);
-
-        // this.beakBendClip.play();
-        // this.ballBendClip.play();
+        this.ballShakeClip = this.mixer.clipAction(this.beakGlb.animations[5]);
+        this.ballShakeClip.setLoop(THREE.LoopOnce);
+        this.ballShakeClip.clampWhenFinished = true;
     }
 
     update() {
@@ -128,15 +149,24 @@ export default class Player extends THREE.Object3D {
             if (this.isAttached && this.isBeingPressed) {
                 // If the beak is attached and is being pressed, no need to update
                 this.clock.getDelta();
-            }
-            
-            else {
+            } else {
                 // If the beak is not attached, update
                 this.mixer.update(this.clock.getDelta());
+
+                if (!this.isAttached) {
+                    let timeDelta = this.clock.elapsedTime - this.t0;
+                    this.ballHeight = -9.8 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
+                    //console.log(this.ballHeight);
+                    this.position.set(0, this.ballHeight, 0);
+
+                    if (this.ballHeight < 0) {
+
+                    }
+                }
             }
         }
 
-        //console.log(this.mixer.time);
+        // console.log(this.mixer.time);
         // console.log("isAttached", this.isAttached);
         // console.log("isBeingPressed", this.isBeingPressed);
     }
@@ -151,6 +181,7 @@ export default class Player extends THREE.Object3D {
             this.beakStabSuccessClip.stop();
             this.beakStabFailedClip.stop();
             this.beakWithdrawClip.stop();
+            this.ballShakeClip.stop();
             this.beakBendClip.play();
             this.ballBendClip.play();
 
@@ -174,6 +205,9 @@ export default class Player extends THREE.Object3D {
             // Play the animation according to the control
             if (this.mixer != null) {
                 this.mixer.setTime(factor);
+
+                // Save the initial speed of the ball
+                this.v0 = Tools.lerp(0, sceneConfiguration.ballMaxInitialSpeed, factor);
             }
         }
     }
@@ -182,7 +216,7 @@ export default class Player extends THREE.Object3D {
     onPointerCancel() {
         if (this.isAttached && this.isBeingPressed) {
             // If the ball is attached and being pressed, release
-            this.withdraw();
+            this.release();
 
             this.isAttached = false;
             this.isBeingPressed = false;
@@ -190,7 +224,6 @@ export default class Player extends THREE.Object3D {
 
         if (this.isAttached && !this.isBeingPressed) {
             // If the ball is attached and not being pressed
-
         }
     }
 
@@ -203,16 +236,29 @@ export default class Player extends THREE.Object3D {
 
         this.beakStabSuccessClip.reset();
         this.beakStabSuccessClip.play();
+        this.ballShakeClip.reset();
+        this.ballShakeClip.play();
+
+        // Stop the ball's movement
     }
 
-    // withdraw the peak
-    withdraw() {
-        console.log("withdraw");
+    // Release the ball
+    release() {
+        console.log("release");
+
+        // withdraw the peak
         this.beakBendClip.stop();
         this.ballBendClip.stop();
+        this.ballShakeClip.stop();
         this.beakStabSuccessClip.stop();
 
         this.beakWithdrawClip.reset();
         this.beakWithdrawClip.play();
+
+        // Save the initial height of the ball
+        this.h0 = this.position.y;
+
+        // Save the initial time of the release
+        this.t0 = this.clock.elapsedTime;
     }
 }

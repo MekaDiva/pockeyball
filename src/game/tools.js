@@ -61,7 +61,7 @@ class Tools {
         }
     }
 
-    // Returns the point of a surface cemtered at vector3Position with side length
+    // Returns the point of a surface centered at vector3Position with side length
     randomSurfacePoint(vector3Position, length){
         var u = Math.random();
         var v = Math.random();
