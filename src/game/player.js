@@ -61,6 +61,9 @@ export default class Player extends THREE.Object3D {
         // The hight of the ball
         this.ballHeight = 0;
 
+        // The speed of the ball
+        this.ballSpeed = 0;
+
         // The initial height and initial speed and the initial time when launched into the sky
         this.h0 = null;
         this.v0 = null;
@@ -163,6 +166,7 @@ export default class Player extends THREE.Object3D {
                 if (!this.isAttached) {
                     let timeDelta = this.clock.elapsedTime - this.t0;
                     this.ballHeight = -9.8 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
+                    this.ballSpeed = -9.8 * timeDelta + this.v0;
                     //console.log(this.ballHeight);
                     Game.objects.position.set(0, -this.ballHeight, 0);
                     //this.position.set(0, this.ballHeight, 0);
@@ -237,69 +241,79 @@ export default class Player extends THREE.Object3D {
         //console.log("stab");
         this.beakBendClip.stop();
         this.ballBendClip.stop();
+        this.beakWithdrawClip.stop();
 
-        // Touche the basic path, attached and gain score
-        this.beakStabSuccessClip.reset();
-        this.beakStabSuccessClip.play();
-        this.ballShakeClip.reset();
-        this.ballShakeClip.play();
+        // Do the raycast check
+        var rayOrigin = new THREE.Vector3(0, sceneConfiguration.ballInitialHeight, 1);
+        var rayDirection = new THREE.Vector3(0, 0, -1);
+        this.raycaster.set(rayOrigin, rayDirection);
+        const intersects = this.raycaster.intersectObjects(Game.objects.obstaclesContainer.children);
+        console.log(intersects[0].object.name);
 
-        //////////
-        console.log("haha");
-        this.isAttached = true;
-        this.isBeingPressed = false;
-        // // Do the raycast check
-        // var rayOrigin = new THREE.Vector3(0, sceneConfiguration.ballInitialHeight, 1);
-        // var rayDirection = new THREE.Vector3(0, 0, -1);
-        // this.raycaster.set(rayOrigin, rayDirection);
-        // const intersects = this.raycaster.intersectObjects(Game.objects.obstaclesContainer.children);
-        // console.log(intersects[0].object.name);
+        var nameOfIntersectObject = intersects[0].object.name;
 
-        // var nameOfIntersectObject = intersects[0].object.name;
+        switch (nameOfIntersectObject) {
+            case "basicPath":
+                // Touche the basic path, attached and gain score
+                this.beakStabFailedClip.stop();
 
-        // switch (nameOfIntersectObject) {
-        //     case "basicPath":
-        //         // Touche the basic path, attached and gain score
-        //         this.beakStabSuccessClip.reset();
-        //         this.beakStabSuccessClip.play();
-        //         this.ballShakeClip.reset();
-        //         this.ballShakeClip.play();
+                this.beakStabSuccessClip.reset();
+                this.beakStabSuccessClip.play();
+                this.ballShakeClip.reset();
+                this.ballShakeClip.play();
 
-        //         //////////
-        //         console.log("haha");
-        //         this.isAttached = true;
-        //         this.isBeingPressed = false;
-        //         break;
-        //     case "greyBlock":
-        //         // Touche the grey block, not able to attach
-        //         this.beakStabFailedClip.reset();
-        //         this.beakStabFailedClip.play();
+                //////////
+                // Stop the ball
+                this.isAttached = true;
+                this.isBeingPressed = false;
+                break;
+            case "greyBlock":
+                // Touche the grey block, not able to attach
+                this.beakStabSuccessClip.stop();
 
-        //         //////////
-        //         this.isAttached = false;
-        //         this.isBeingPressed = false;
-        //         break;
-        //     case "redBlock":
-        //         // Touche the red block, game over
+                this.beakStabFailedClip.reset();
+                this.beakStabFailedClip.play();
 
-        //         //////////
-        //         this.isAttached = false;
-        //         this.isBeingPressed = false;
-        //         break;
-        //     case "targetImg":
-        //         // Touche the target image, get bonus on the initial speed
-        //         this.beakStabSuccessClip.reset();
-        //         this.beakStabSuccessClip.play();
-        //         this.ballShakeClip.reset();
-        //         this.ballShakeClip.play();
+                //////////
+                // Stop the ball for 1 seconds
+                this.isAttached = true;
+                this.isBeingPressed = false;
+                this.v0 = this.ballSpeed;
 
-        //         //////////
-        //         this.isAttached = true;
-        //         this.isBeingPressed = false;
-        //         break;
-        //     default:
-        //         break;
-        // }
+                gsap.delayedCall(0.3, () => {
+                    this.isAttached = false;
+                    this.isBeingPressed = false;
+
+                    // Save the initial time of the release
+                    this.t0 = this.clock.elapsedTime;
+
+                    // Save the initial height of the ball
+                    this.h0 = -Game.objects.position.y;
+                });
+                break;
+            case "redBlock":
+                // Touche the red block, game over
+
+                //////////
+                this.isAttached = false;
+                this.isBeingPressed = false;
+                break;
+            case "targetImg":
+                // Touche the target image, get bonus on the initial speed
+                this.beakStabFailedClip.stop();
+
+                this.beakStabSuccessClip.reset();
+                this.beakStabSuccessClip.play();
+                this.ballShakeClip.reset();
+                this.ballShakeClip.play();
+
+                //////////
+                this.isAttached = true;
+                this.isBeingPressed = false;
+                break;
+            default:
+                break;
+        }
     }
 
     // Release the ball
