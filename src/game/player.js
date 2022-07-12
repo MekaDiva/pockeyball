@@ -65,6 +65,9 @@ export default class Player extends THREE.Object3D {
         this.h0 = null;
         this.v0 = null;
         this.t0 = null;
+
+        // The raycaster from the ball
+        this.raycaster = new THREE.Raycaster();
     }
 
     async init() {
@@ -74,7 +77,7 @@ export default class Player extends THREE.Object3D {
         this.beakGlb = await this.glftLoader.loadAsync(beakGlbFilePath);
         //console.log(this.beakGlb);
 
-        const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03 });
+        const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03, side: THREE.DoubleSide });
         this.beakScene = this.beakGlb.scene;
         //console.log(this.beakScene);
 
@@ -88,7 +91,7 @@ export default class Player extends THREE.Object3D {
 
         this.ballHeight = sceneConfiguration.ballInitialHeight;
         this.position.set(0, this.ballHeight, 0);
-        
+
         this.beakScene.scale.set(10, 10, 10);
         this.beakScene.rotation.y = Math.PI;
 
@@ -97,15 +100,17 @@ export default class Player extends THREE.Object3D {
         // Load the beak model
         this.beakScene.children[0].children[2].material = beakMaterial;
         this.beakScene.children[0].children[2].castShadow = true;
-        //this.beakScene.children[0].children[2].receiveShadow = true;
+        this.beakScene.children[0].children[2].receiveShadow = true;
         this.beakBendClip = this.mixer.clipAction(this.beakGlb.animations[0]);
-        //this.beakBendClip.loop = new THREE.LoopOnce();
+
         this.beakStabFailedClip = this.mixer.clipAction(this.beakGlb.animations[1]);
         this.beakStabFailedClip.setLoop(THREE.LoopOnce);
         this.beakStabFailedClip.clampWhenFinished = true;
+
         this.beakStabSuccessClip = this.mixer.clipAction(this.beakGlb.animations[2]);
         this.beakStabSuccessClip.setLoop(THREE.LoopOnce);
         this.beakStabSuccessClip.clampWhenFinished = true;
+
         this.beakWithdrawClip = this.mixer.clipAction(this.beakGlb.animations[3]);
         this.beakWithdrawClip.setLoop(THREE.LoopOnce);
         this.beakWithdrawClip.clampWhenFinished = true;
@@ -163,7 +168,6 @@ export default class Player extends THREE.Object3D {
                     //this.position.set(0, this.ballHeight, 0);
 
                     if (this.ballHeight < 0) {
-
                     }
                 }
             }
@@ -180,25 +184,12 @@ export default class Player extends THREE.Object3D {
     onPointerDown() {
         if (this.isAttached && !this.isBeingPressed) {
             // If the beak is attached but not being pressed
-
-            this.beakStabSuccessClip.stop();
-            this.beakStabFailedClip.stop();
-            this.beakWithdrawClip.stop();
-            this.ballShakeClip.stop();
-            this.beakBendClip.play();
-            this.ballBendClip.play();
-
-            this.isAttached = true;
-            this.isBeingPressed = true;
+            this.press();
         }
 
         if (!this.isAttached && !this.isBeingPressed) {
             // If the beak is not attached and not being pressed in the air
-
             this.stab();
-
-            this.isAttached = true;
-            this.isBeingPressed = false;
         }
     }
 
@@ -220,9 +211,6 @@ export default class Player extends THREE.Object3D {
         if (this.isAttached && this.isBeingPressed) {
             // If the ball is attached and being pressed, release
             this.release();
-
-            this.isAttached = false;
-            this.isBeingPressed = false;
         }
 
         if (this.isAttached && !this.isBeingPressed) {
@@ -230,24 +218,93 @@ export default class Player extends THREE.Object3D {
         }
     }
 
-    // Stab the peak
+    // Press the beak
+    press() {
+        this.beakStabSuccessClip.stop();
+        this.beakStabFailedClip.stop();
+        this.beakWithdrawClip.stop();
+        this.ballShakeClip.stop();
+        this.beakBendClip.play();
+        this.ballBendClip.play();
+
+        //////////
+        this.isAttached = true;
+        this.isBeingPressed = true;
+    }
+
+    // Stab the beak
     stab() {
-        console.log("stab");
+        //console.log("stab");
         this.beakBendClip.stop();
         this.ballBendClip.stop();
-        this.beakWithdrawClip.stop();
 
+        // Touche the basic path, attached and gain score
         this.beakStabSuccessClip.reset();
         this.beakStabSuccessClip.play();
         this.ballShakeClip.reset();
         this.ballShakeClip.play();
 
-        // Stop the ball's movement
+        //////////
+        console.log("haha");
+        this.isAttached = true;
+        this.isBeingPressed = false;
+        // // Do the raycast check
+        // var rayOrigin = new THREE.Vector3(0, sceneConfiguration.ballInitialHeight, 1);
+        // var rayDirection = new THREE.Vector3(0, 0, -1);
+        // this.raycaster.set(rayOrigin, rayDirection);
+        // const intersects = this.raycaster.intersectObjects(Game.objects.obstaclesContainer.children);
+        // console.log(intersects[0].object.name);
+
+        // var nameOfIntersectObject = intersects[0].object.name;
+
+        // switch (nameOfIntersectObject) {
+        //     case "basicPath":
+        //         // Touche the basic path, attached and gain score
+        //         this.beakStabSuccessClip.reset();
+        //         this.beakStabSuccessClip.play();
+        //         this.ballShakeClip.reset();
+        //         this.ballShakeClip.play();
+
+        //         //////////
+        //         console.log("haha");
+        //         this.isAttached = true;
+        //         this.isBeingPressed = false;
+        //         break;
+        //     case "greyBlock":
+        //         // Touche the grey block, not able to attach
+        //         this.beakStabFailedClip.reset();
+        //         this.beakStabFailedClip.play();
+
+        //         //////////
+        //         this.isAttached = false;
+        //         this.isBeingPressed = false;
+        //         break;
+        //     case "redBlock":
+        //         // Touche the red block, game over
+
+        //         //////////
+        //         this.isAttached = false;
+        //         this.isBeingPressed = false;
+        //         break;
+        //     case "targetImg":
+        //         // Touche the target image, get bonus on the initial speed
+        //         this.beakStabSuccessClip.reset();
+        //         this.beakStabSuccessClip.play();
+        //         this.ballShakeClip.reset();
+        //         this.ballShakeClip.play();
+
+        //         //////////
+        //         this.isAttached = true;
+        //         this.isBeingPressed = false;
+        //         break;
+        //     default:
+        //         break;
+        // }
     }
 
     // Release the ball
     release() {
-        console.log("release");
+        //console.log("release");
 
         // withdraw the peak
         this.beakBendClip.stop();
@@ -263,5 +320,9 @@ export default class Player extends THREE.Object3D {
 
         // Save the initial time of the release
         this.t0 = this.clock.elapsedTime;
+
+        //////////
+        this.isAttached = false;
+        this.isBeingPressed = false;
     }
 }

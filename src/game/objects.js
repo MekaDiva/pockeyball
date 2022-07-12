@@ -12,6 +12,7 @@ const tree0GlbPath = process.env.PUBLIC_URL + "/models/tree0.glb";
 const tree1GlbPath = process.env.PUBLIC_URL + "/models/tree1.glb";
 const tree2GlbPath = process.env.PUBLIC_URL + "/models/tree2.glb";
 const brancheGlbPath = process.env.PUBLIC_URL + "/models/branche.glb";
+const targetImgPath = process.env.PUBLIC_URL + "/img/target.png";
 
 export default class Objects extends THREE.Object3D {
     constructor() {
@@ -29,9 +30,6 @@ export default class Objects extends THREE.Object3D {
 
         this.obstaclesContainer = new THREE.Object3D();
         this.add(this.obstaclesContainer);
-
-        this.awardsContainer = new THREE.Object3D();
-        this.add(this.awardsContainer);
 
         // Array of cloud
         this.cloudArray = [];
@@ -115,7 +113,7 @@ export default class Objects extends THREE.Object3D {
         }
 
         // Add tree to scene
-        const centerOfForest = new THREE.Vector3(0, 0, - sceneConfiguration.treeRange / 2 - 5);
+        const centerOfForest = new THREE.Vector3(0, 0, -sceneConfiguration.treeRange / 2 - 5);
         for (let index = 0; index < sceneConfiguration.treeNumber; index++) {
             var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange);
             var treeType = Tools.randomNum(0, 2);
@@ -126,49 +124,83 @@ export default class Objects extends THREE.Object3D {
 
         // Add the basic path
         var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
-        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0 });
+        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0, side: THREE.DoubleSide });
         this.basicPath = this.addBasicGeometries(geometry, material);
         this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
-        this.visualObjectsContainer.add(this.basicPath);
+        this.basicPath.name = "basicPath";
+        this.obstaclesContainer.add(this.basicPath);
 
         // Add the branche to the basic path
+        var branchesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.brancheNumber);
         for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
-            var left0Right1 = Tools.randomNum(0, 1);
-            var yPosition = Math.random() * sceneConfiguration.pathHeight;
-            if (left0Right1 == 0) {
-                var branche = this.branche.clone();
-                branche.position.set(-1, yPosition + 0.5, 0);
-                this.visualObjectsContainer.add(branche);
-            }
-            if (left0Right1 == 1) {
-                var branche = this.branche.clone();
-                branche.rotation.y = Math.PI;
-                branche.position.set(1, yPosition + 0.5, 0);
-                this.visualObjectsContainer.add(branche);
+            if (index > 1) {
+                var brancheType = Tools.randomNum(0, 2);
+                var yPosition = branchesDistance * index;
+                switch (brancheType) {
+                    case 0:
+                        // Left
+                        var branche = this.branche.clone();
+                        branche.position.set(-1, yPosition + 0.5, 0);
+                        this.visualObjectsContainer.add(branche);
+                        break;
+                    case 1:
+                        // Right
+                        var branche = this.branche.clone();
+                        branche.rotation.y = Math.PI;
+                        branche.position.set(1, yPosition + 0.5, 0);
+                        this.visualObjectsContainer.add(branche);
+                        break;
+                    case 2:
+                        // Do nothing
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 
         var obstaclesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.obstacleNumber);
         for (let index = 0; index < sceneConfiguration.obstacleNumber; index++) {
-            var obstacleType = Tools.randomNum(0, 2);
-            switch (obstacleType) {
-                case 0:
-                    // Add the grey block to the basic path
-                    
-                    break;
-                case 1:
-                    // Add the red block to the basic path
-
-                    break;
-                case 2:
-                    // Add the acceleration target to the basic path
-
-                    break;
-                default:
-                    break;
+            var obstacleType = Tools.randomNum(0, 3);
+            if (index > 2) {
+                switch (obstacleType) {
+                    case 0:
+                        // Add the grey block to the basic path
+                        var greyBlockGeometry = new THREE.BoxGeometry(2.5, 2, 1.4);
+                        var greyBlockMaterial = new THREE.MeshStandardMaterial({ color: 0xa3a3a3, metalness: 0, side: THREE.DoubleSide });
+                        var greyBlockMesh = this.addBasicGeometries(greyBlockGeometry, greyBlockMaterial);
+                        greyBlockMesh.name = "greyBlock";
+                        greyBlockMesh.position.set(0, obstaclesDistance * index, 0);
+                        this.obstaclesContainer.add(greyBlockMesh);
+                        break;
+                    case 1:
+                        // Add the red block to the basic path
+                        var redBlockGeometry = new THREE.BoxGeometry(2.5, 1.5, 1.4);
+                        var redBlockMaterial = new THREE.MeshStandardMaterial({ color: 0xc90000, metalness: 0, side: THREE.DoubleSide });
+                        var redBlockMesh = this.addBasicGeometries(redBlockGeometry, redBlockMaterial);
+                        redBlockMesh.name = "redBlock";
+                        redBlockMesh.position.set(0, obstaclesDistance * index, 0);
+                        this.obstaclesContainer.add(redBlockMesh);
+                        break;
+                    case 2:
+                        // Add the acceleration target to the basic path
+                        var targetTexture = this.textureLoader.load(targetImgPath);
+                        targetTexture.encoding = THREE.sRGBEncoding;
+                        var targetMaterial = new THREE.MeshStandardMaterial({ map: targetTexture });
+                        var targetGeometry = new THREE.PlaneBufferGeometry(1, 1);
+                        var targetMesh = this.addBasicGeometries(targetGeometry, targetMaterial);
+                        targetMesh.name = "targetImg";
+                        targetMesh.position.set(0, obstaclesDistance * index, 0.51);
+                        this.obstaclesContainer.add(targetMesh);
+                        break;
+                    case 3:
+                        // Do nothing, leave the space empty
+                        break;
+                    default:
+                        break;
+                }
             }
         }
-
     }
 
     update() {
@@ -202,7 +234,7 @@ export default class Objects extends THREE.Object3D {
     async addGlbModel(filePath, material, arrayContainer = null) {
         var glbMesh = (await this.glftLoader.loadAsync(filePath)).scene.children[1];
         glbMesh.material = material;
-        glbMesh.receiveShadow = false;
+        glbMesh.receiveShadow = true;
         glbMesh.castShadow = true;
         if (arrayContainer != null) {
             arrayContainer.push(glbMesh);

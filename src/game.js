@@ -47,7 +47,7 @@ export const sceneConfiguration = {
     brancheNumber: 40,
 
     // The number of obstacles on the path, pay attention to the pathHeight
-    obstacleNumber: 100,
+    obstacleNumber: 50,
 
     // Whether the game is started
     gameStarted: false,
@@ -157,7 +157,7 @@ class Game extends THREE.EventDispatcher {
         dirLight.shadow.camera.bottom = -d;
 
         dirLight.shadow.camera.far = 2500;
-        dirLight.shadow.bias = 0;
+        dirLight.shadow.bias = -0.00005;
 
         // Renderer configuration
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
