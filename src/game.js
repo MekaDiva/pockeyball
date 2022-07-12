@@ -13,6 +13,8 @@ const skyFloorTexture = process.env.PUBLIC_URL + "/img/sky.jpg";
 export const sceneConfiguration = {
     FPS: 60,
 
+    debug: false,
+
     // Stage of the game
     stageGame: {
         readyStage: 0,
@@ -36,10 +38,10 @@ export const sceneConfiguration = {
     cloudNumber: 50,
 
     // The range of trees
-    treeRange: 1000,
+    treeRange: 100,
 
     // The total number of trees
-    treeNumber: 10000,
+    treeNumber: 500,
 
     // The number of branche on the path, pay attention to the pathHeight
     brancheNumber: 40,
@@ -130,32 +132,32 @@ class Game extends THREE.EventDispatcher {
         this.scene.fog = new THREE.Fog(0x008011, 1, 500);
 
         // Light configuration
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xa1a1a1, 0xa1a1a1, 0.2);
         hemiLight.color.setHSL(0.6, 1, 0.6);
         hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-        hemiLight.position.set(0, 50, 0);
+        hemiLight.position.set(10, 50, 10);
         this.scene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.color.setHSL(0.1, 1, 0.95);
-        dirLight.position.set(0.7, 1.75, 1);
+        dirLight.position.set(1.7, 1.75, 2);
         dirLight.position.multiplyScalar(30);
         this.scene.add(dirLight);
 
         dirLight.castShadow = true;
 
-        dirLight.shadow.mapSize.width = 2048 * 100;
-        dirLight.shadow.mapSize.height = 2048 * 100;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
 
-        const d = 50;
+        const d = 20;
 
         dirLight.shadow.camera.left = -d;
         dirLight.shadow.camera.right = d;
         dirLight.shadow.camera.top = d;
         dirLight.shadow.camera.bottom = -d;
 
-        dirLight.shadow.camera.far = 250000;
-        dirLight.shadow.bias = 0.0001;
+        dirLight.shadow.camera.far = 2500;
+        dirLight.shadow.bias = 0;
 
         // Renderer configuration
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -174,12 +176,14 @@ class Game extends THREE.EventDispatcher {
         const axesHelper = new THREE.AxesHelper(3);
         this.scene.add(axesHelper);
 
-        // this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
-        // this.cameraControls.enablePan = false;
-        // this.cameraControls.enableZoom = true;
-        // //this.cameraControls.maxPolarAngle = Math.PI / 2;
-        // this.cameraControls.target.set(0, 2, 0);
-        // this.cameraControls.update();
+        if (sceneConfiguration.debug) {
+            this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.cameraControls.enablePan = false;
+            this.cameraControls.enableZoom = true;
+            //this.cameraControls.maxPolarAngle = Math.PI / 2;
+            this.cameraControls.target.set(0, 2, 0);
+            this.cameraControls.update();
+        }
     }
 
     initGame() {
@@ -203,22 +207,24 @@ class Game extends THREE.EventDispatcher {
         // Add event handlers for the resize of window
         window.addEventListener("resize", this.playableResize, false);
 
-        this.renderer.domElement.style.touchAction = 'none'; // disable touch scroll
+        this.renderer.domElement.style.touchAction = "none"; // disable touch scroll
 
         // Add event handlers for clicking
         document.addEventListener("keypress", this.keypress, false);
 
-        // Add event handlers for pointerdown
-        document.addEventListener("pointerdown", this.onPointerDown);
+        if (!sceneConfiguration.debug) {
+            // Add event handlers for pointerdown
+            document.addEventListener("pointerdown", this.onPointerDown);
 
-        // Add event handlers for pointermove
-        document.addEventListener("pointermove", this.onPointerMove);
+            // Add event handlers for pointermove
+            document.addEventListener("pointermove", this.onPointerMove);
 
-        // Add event handlers for pointerup
-        document.addEventListener("pointerup", this.onPointerCancel);
+            // Add event handlers for pointerup
+            document.addEventListener("pointerup", this.onPointerCancel);
 
-        // Add event handlers for pointer leave the screen
-        document.addEventListener("pointerleave", this.onPointerCancel);
+            // Add event handlers for pointer leave the screen
+            document.addEventListener("pointerleave", this.onPointerCancel);
+        }
 
         //document.style.touchAction = 'none';
     }
@@ -322,15 +328,9 @@ class Game extends THREE.EventDispatcher {
         sceneConfiguration.isPause = true;
     }
 
-    dropBallOnGround() {
+    dropBallOnGround() {}
 
-    }
-
-    touchRedBlock() {
-
-    }
-
-
+    touchRedBlock() {}
 }
 
 export default new Game();

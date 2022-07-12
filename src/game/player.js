@@ -72,25 +72,27 @@ export default class Player extends THREE.Object3D {
         this.glftLoader = new GLTFLoader();
 
         this.beakGlb = await this.glftLoader.loadAsync(beakGlbFilePath);
+        //console.log(this.beakGlb);
+
         const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03 });
         this.beakScene = this.beakGlb.scene;
+        //console.log(this.beakScene);
 
         // Add the beakScene to the player
         this.add(this.beakScene);
 
-        // Add the camera as the child of the beakScene
-        this.add(Game.camera);
+        if (!sceneConfiguration.debug) {
+            // Add the camera as the child of the beakScene
+            this.add(Game.camera);
+        }
 
         this.ballHeight = sceneConfiguration.ballInitialHeight;
         this.position.set(0, this.ballHeight, 0);
-
-
-        console.log(this.beakGlb);
+        
         this.beakScene.scale.set(10, 10, 10);
         this.beakScene.rotation.y = Math.PI;
 
         this.mixer = new THREE.AnimationMixer(this.beakScene);
-        //console.log(this.beakScene);
 
         // Load the beak model
         this.beakScene.children[0].children[2].material = beakMaterial;
@@ -157,7 +159,8 @@ export default class Player extends THREE.Object3D {
                     let timeDelta = this.clock.elapsedTime - this.t0;
                     this.ballHeight = -9.8 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
                     //console.log(this.ballHeight);
-                    this.position.set(0, this.ballHeight, 0);
+                    Game.objects.position.set(0, -this.ballHeight, 0);
+                    //this.position.set(0, this.ballHeight, 0);
 
                     if (this.ballHeight < 0) {
 
@@ -256,7 +259,7 @@ export default class Player extends THREE.Object3D {
         this.beakWithdrawClip.play();
 
         // Save the initial height of the ball
-        this.h0 = this.position.y;
+        this.h0 = -Game.objects.position.y;
 
         // Save the initial time of the release
         this.t0 = this.clock.elapsedTime;

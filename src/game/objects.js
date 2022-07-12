@@ -126,10 +126,10 @@ export default class Objects extends THREE.Object3D {
 
         // Add the basic path
         var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
-        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0.5 });
+        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0 });
         this.basicPath = this.addBasicGeometries(geometry, material);
         this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
-        Game.scene.add(this.basicPath);
+        this.visualObjectsContainer.add(this.basicPath);
 
         // Add the branche to the basic path
         for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
@@ -148,18 +148,26 @@ export default class Objects extends THREE.Object3D {
             }
         }
 
+        var obstaclesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.obstacleNumber);
+        for (let index = 0; index < sceneConfiguration.obstacleNumber; index++) {
+            var obstacleType = Tools.randomNum(0, 2);
+            switch (obstacleType) {
+                case 0:
+                    // Add the grey block to the basic path
+                    
+                    break;
+                case 1:
+                    // Add the red block to the basic path
 
+                    break;
+                case 2:
+                    // Add the acceleration target to the basic path
 
-        // Add the grey block to the basic path
-
-        // Add the acceleration target to the basic path
-
-        // Add the red block to the basic path
-
-        // this.branche.position.set(-1, 3, 0);
-        // this.branche.rotation.y = Math.PI;
-        // this.branche.position.set(1, 3, 0);
-        // this.visualObjectsContainer.add(this.branche);
+                    break;
+                default:
+                    break;
+            }
+        }
 
     }
 
