@@ -328,9 +328,20 @@ class Game extends THREE.EventDispatcher {
         sceneConfiguration.isPause = true;
     }
 
-    dropBallOnGround() {}
+    // When the height of the ball is below 2, drop the ball and game over
+    dropBallOnGround() {
+        console.log("dropBallOnGround");
 
-    touchRedBlock() {}
+        this.objects.position.set(0, -2, 0);
+        this.player.playBallDropAnimation();
+
+        
+    }
+
+    touchRedBlock() {
+        console.log("touchRedBlock");
+
+    }
 }
 
 export default new Game();

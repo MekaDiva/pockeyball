@@ -28,6 +28,9 @@ export default class Player extends THREE.Object3D {
         // The scene of the beak model, an object3d
         this.beakScene = null;
 
+        // The mesh of the beak model
+        this.beakMesh = null;
+
         // The mesh of the ball attached to the beak
         this.ballMesh = null;
 
@@ -93,7 +96,9 @@ export default class Player extends THREE.Object3D {
         }
 
         this.ballHeight = sceneConfiguration.ballInitialHeight;
-        this.position.set(0, this.ballHeight, 0);
+
+        // Move the game object to the - initial position
+        Game.objects.position.set(0, -this.ballHeight, 0);
 
         this.beakScene.scale.set(10, 10, 10);
         this.beakScene.rotation.y = Math.PI;
@@ -101,9 +106,10 @@ export default class Player extends THREE.Object3D {
         this.mixer = new THREE.AnimationMixer(this.beakScene);
 
         // Load the beak model
-        this.beakScene.children[0].children[2].material = beakMaterial;
-        this.beakScene.children[0].children[2].castShadow = true;
-        this.beakScene.children[0].children[2].receiveShadow = true;
+        this.beakMesh = this.beakScene.children[0].children[2];
+        this.beakMesh.material = beakMaterial;
+        this.beakMesh.castShadow = true;
+        this.beakMesh.receiveShadow = true;
         this.beakBendClip = this.mixer.clipAction(this.beakGlb.animations[0]);
 
         this.beakStabFailedClip = this.mixer.clipAction(this.beakGlb.animations[1]);
@@ -144,8 +150,9 @@ export default class Player extends THREE.Object3D {
         //add material setting
         const ballMaterial = new THREE.MeshPhysicalMaterial(ballMat);
 
-        this.beakScene.children[1].material = ballMaterial;
-        this.beakScene.children[1].castShadow = true;
+        this.ballMesh = this.beakScene.children[1];
+        this.ballMesh.material = ballMaterial;
+        this.ballMesh.castShadow = true;
         //this.beakScene.children[1].receiveShadow = true;
 
         this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[4]);
@@ -167,11 +174,12 @@ export default class Player extends THREE.Object3D {
                     let timeDelta = this.clock.elapsedTime - this.t0;
                     this.ballHeight = -9.8 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
                     this.ballSpeed = -9.8 * timeDelta + this.v0;
-                    //console.log(this.ballHeight);
                     Game.objects.position.set(0, -this.ballHeight, 0);
-                    //this.position.set(0, this.ballHeight, 0);
 
-                    if (this.ballHeight < 0) {
+                    //console.log(this.ballHeight);
+                    if (this.ballHeight < 2) {
+                        // Game over
+                        Game.dropBallOnGround();
                     }
                 }
             }
@@ -331,6 +339,7 @@ export default class Player extends THREE.Object3D {
 
         // Save the initial height of the ball
         this.h0 = -Game.objects.position.y;
+        console.log(this.h0);
 
         // Save the initial time of the release
         this.t0 = this.clock.elapsedTime;
@@ -338,5 +347,17 @@ export default class Player extends THREE.Object3D {
         //////////
         this.isAttached = false;
         this.isBeingPressed = false;
+    }
+
+    playBallDropAnimation() {
+        // Stop the movement of the ball
+        this.isAttached = true;
+        this.isBeingPressed = false;
+
+        // Play the ball drop animation
+        //this.ballMesh.position.y = -0.17;
+        this.ballMesh.position.y = 0;
+        gsap.to(this.ballMesh.position, { duration: 1, y: -0.17, ease: "bounce" });
+        this.beakMesh.visible = false;
     }
 }
