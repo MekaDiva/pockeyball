@@ -1,0 +1,10 @@
+/* @font-face {
+    font-family: 'TappedDefault';
+    src: url("../public/fonts/TappedDefault.otf") format('otf'),
+         url("../public/fonts/TappedDefault.woff") format('woff');
+} */
+
+@font-face {
+    font-family: 'TappedDefault';
+    src: url("../public/fonts/TappedDefault.otf") format('otf');
+}

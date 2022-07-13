@@ -18,10 +18,14 @@ class Ui extends THREE.EventDispatcher {
     }
 
     init() {
-        // Add score for the oil collected
+        // Disable the selection of the text field
+        function disableselect(e) {return false};
+        document.onselectstart = disableselect;
+
+        // Add score
         let gameScore = document.createElement("p");
         gameScore.id = "gameScore";
-        gameScore.innerText = "0";
+        gameScore.innerText = "abcdefglL";
         gameScore.style.fontSize = "40px";
         gameScore.style.color = "black";
         gameScore.style.position = "absolute";
@@ -30,6 +34,8 @@ class Ui extends THREE.EventDispatcher {
         gameScore.style.top = "calc(10%)";
         gameScore.style.width = "100px";
         gameScore.style.height = "30px";
+        gameScore.style.cursor = "default";
+        gameScore.style.fontFamily = "TappedDefault";
 
         document.body.appendChild(gameScore);
     }
