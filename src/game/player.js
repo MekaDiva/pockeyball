@@ -233,7 +233,10 @@ export default class Player extends THREE.Object3D {
 
         this.beakMesh.visible = true;
         this.ballMesh.position.y = 0;
-        this.bounceAnimation.kill();
+        if (this.bounceAnimation != null) {
+            this.bounceAnimation.kill();
+        }
+
         // Move the game object to the - initial position
         Game.objects.position.set(0, -sceneConfiguration.ballInitialHeight, 0);
 
