@@ -12,9 +12,14 @@ class Ui extends THREE.EventDispatcher {
         super();
 
         this.init = this.init.bind(this);
-        this.toggleStartButton = this.toggleStartButton.bind(this);
         this.toggleResetButton = this.toggleResetButton.bind(this);
         this.toggleAlert = this.toggleAlert.bind(this);
+
+        // The reset button
+        this.resetButton = null;
+
+        // The alert message
+        this.alert = null;
     }
 
     init() {
@@ -25,14 +30,14 @@ class Ui extends THREE.EventDispatcher {
         // Add score
         let gameScore = document.createElement("p");
         gameScore.id = "gameScore";
-        gameScore.innerText = "abcdefglL";
+        gameScore.innerText = "0";
         gameScore.style.fontSize = "40px";
-        gameScore.style.color = "black";
+        gameScore.style.color = "white";
         gameScore.style.position = "absolute";
         gameScore.style.textAlign = "center";
-        gameScore.style.left = "calc(50% - 50px)";
+        gameScore.style.left = "calc(50% - 100px)";
         gameScore.style.top = "calc(10%)";
-        gameScore.style.width = "100px";
+        gameScore.style.width = "200px";
         gameScore.style.height = "30px";
         gameScore.style.cursor = "default";
         gameScore.style.fontFamily = "TappedDefault";
@@ -40,69 +45,38 @@ class Ui extends THREE.EventDispatcher {
         document.body.appendChild(gameScore);
     }
 
-    toggleStartButton(isActive) {
-        if (isActive) {
-            // Add start button
-            let startButton = document.createElement("p");
-            startButton.id = "startButton";
-            startButton.innerText = "Start";
-            startButton.style.fontSize = "50px";
-            startButton.style.color = "black";
-            startButton.style.textAlign = "center";
-            startButton.style.position = "absolute";
-            startButton.style.left = "calc(50% - 100px)";
-            startButton.style.top = "calc(50% - 50px)";
-            startButton.style.width = "200px";
-            startButton.style.height = "100px";
-            startButton.style.cursor = "pointer";
-            startButton.onmouseenter = (e) => {
-                startButton.style.color = "white";
-            };
-            startButton.onmouseup = (e) => {
-                Game.start();
-
-                this.toggleStartButton(false);
-            };
-            startButton.onmouseleave = (e) => {
-                startButton.style.color = "black";
-            };
-
-            document.body.appendChild(startButton);
-        } else {
-            document.getElementById("startButton").remove();
-        }
-    }
-
     toggleResetButton(isActive) {
         if (isActive) {
             // Add reset button
-            let resetButton = document.createElement("p");
-            resetButton.id = "resetButton";
-            resetButton.innerText = "reset";
-            resetButton.style.fontSize = "50px";
-            resetButton.style.color = "black";
-            resetButton.style.textAlign = "center";
-            resetButton.style.position = "absolute";
-            resetButton.style.left = "calc(50% - 100px)";
-            resetButton.style.top = "calc(50% - 50px)";
-            resetButton.style.width = "200px";
-            resetButton.style.height = "100px";
-            resetButton.style.cursor = "pointer";
-            resetButton.onmouseenter = (e) => {
-                resetButton.style.color = "white";
+            this.resetButton = document.createElement("p");
+            this.resetButton.id = "resetButton";
+            this.resetButton.innerText = "reset";
+            this.resetButton.style.fontSize = "50px";
+            this.resetButton.style.color = "white";
+            this.resetButton.style.textAlign = "center";
+            this.resetButton.style.position = "absolute";
+            this.resetButton.style.left = "calc(50% - 100px)";
+            this.resetButton.style.top = "calc(50% - 50px)";
+            this.resetButton.style.width = "200px";
+            this.resetButton.style.height = "100px";
+            this.resetButton.style.cursor = "pointer";
+            this.resetButton.style.fontFamily = "TappedDefault";
+            this.resetButton.onmouseenter = (e) => {
+                this.resetButton.style.color = "grey";
             };
-            resetButton.onmouseup = (e) => {
+            this.resetButton.onmouseup = (e) => {
                 Game.reset();
 
                 this.toggleResetButton(false);
             };
-            resetButton.onmouseleave = (e) => {
-                resetButton.style.color = "black";
+            this.resetButton.onmouseleave = (e) => {
+                this.resetButton.style.color = "white";
             };
 
-            document.body.appendChild(resetButton);
+            document.body.appendChild(this.resetButton);
         } else {
-            document.getElementById("resetButton").remove();
+
+            this.resetButton.remove();
         }
     }
 
@@ -128,9 +102,9 @@ class Ui extends THREE.EventDispatcher {
         }
     }
 
-    showCurrentOilScore() {
+    showCurrentScore() {
         let gameScore = document.getElementById("gameScore");
-        gameScore.innerText = sceneConfiguration.data.oilCollected + " / " + sceneConfiguration.targetOilCollected;
+        gameScore.innerText = sceneConfiguration.playerScore;
     }
 }
 

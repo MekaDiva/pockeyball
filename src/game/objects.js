@@ -66,16 +66,11 @@ export default class Objects extends THREE.Object3D {
     async init() {
         console.log("objectsInit");
 
-        this.fixedTimeStep = 1.0 / Game.FPS; // seconds
-        this.maxSubSteps = 10;
-
         // Add ground to the scene
-
         const floorTexture = this.textureLoader.load(floorTexturePath);
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
         floorTexture.repeat.set(10000, 10000);
         floorTexture.anisotrophy = 16;
-        floorTexture.encoding = THREE.sRGBEncoding;
         const floorMaterial = new THREE.MeshStandardMaterial({ map: floorTexture });
         const floorMesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(10000, 10000), floorMaterial);
         floorMesh.rotation.x = -Math.PI / 2;
@@ -122,14 +117,6 @@ export default class Objects extends THREE.Object3D {
             this.visualObjectsContainer.add(tree);
         }
 
-        // Add the basic path
-        var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
-        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0, side: THREE.DoubleSide });
-        this.basicPath = this.addBasicGeometries(geometry, material);
-        this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
-        this.basicPath.name = "basicPath";
-        this.obstaclesContainer.add(this.basicPath);
-
         // Add the branche to the basic path
         var branchesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.brancheNumber);
         for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
@@ -159,6 +146,46 @@ export default class Objects extends THREE.Object3D {
             }
         }
 
+        // Add the basic path to the obstaclesContainer
+        this.addBasicPath();
+    }
+
+    update() {
+        //console.log(this.loaderLoaded);
+    }
+
+    destroy() {
+        console.log("destroy objects");
+
+        while (this.visualObjectsContainer.children.length) {
+            this.visualObjectsContainer.remove(this.visualObjectsContainer.children[0]);
+        }
+
+        while (this.obstaclesContainer.children.length) {
+            this.obstaclesContainer.remove(this.obstaclesContainer.children[0]);
+        }
+    }
+
+    reset() {
+        console.log('reset objects');
+
+        while (this.obstaclesContainer.children.length) {
+            this.obstaclesContainer.remove(this.obstaclesContainer.children[0]);
+        }
+
+        this.addBasicPath();
+    }
+
+    addBasicPath() {
+        // Add the basic path
+        var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
+        var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0, side: THREE.DoubleSide });
+        this.basicPath = this.addBasicGeometries(geometry, material);
+        this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
+        this.basicPath.name = "basicPath";
+        this.obstaclesContainer.add(this.basicPath);
+
+        // Add three types of obstacles
         var obstaclesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.obstacleNumber);
         for (let index = 0; index < sceneConfiguration.obstacleNumber; index++) {
             var obstacleType = Tools.randomNum(0, 3);
@@ -185,8 +212,8 @@ export default class Objects extends THREE.Object3D {
                     case 2:
                         // Add the acceleration target to the basic path
                         var targetTexture = this.textureLoader.load(targetImgPath);
-                        targetTexture.encoding = THREE.sRGBEncoding;
                         var targetMaterial = new THREE.MeshStandardMaterial({ map: targetTexture });
+                        targetMaterial.transparent = true;
                         var targetGeometry = new THREE.PlaneBufferGeometry(1, 1);
                         var targetMesh = this.addBasicGeometries(targetGeometry, targetMaterial);
                         targetMesh.name = "targetImg";
@@ -200,26 +227,6 @@ export default class Objects extends THREE.Object3D {
                         break;
                 }
             }
-        }
-    }
-
-    update() {
-        //console.log(this.loaderLoaded);
-    }
-
-    destroy() {
-        console.log("destroy called");
-
-        while (this.visualObjectsContainer.children.length) {
-            this.visualObjectsContainer.remove(this.visualObjectsContainer.children[0]);
-        }
-
-        while (this.obstaclesContainer.children.length) {
-            this.obstaclesContainer.remove(this.obstaclesContainer.children[0]);
-        }
-
-        while (this.awardsContainer.children.length) {
-            this.awardsContainer.remove(this.awardsContainer.children[0]);
         }
     }
 

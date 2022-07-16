@@ -58,6 +58,9 @@ export const sceneConfiguration = {
     // How much is the max speed up
     ballMaxInitialSpeed: 30,
 
+    // How much is the max speed when touch the target
+    ballMaxBonusInitialSpeed: 45,
+
     // The initial height of the ball attached to the path
     ballInitialHeight: 3,
 
@@ -132,13 +135,13 @@ class Game extends THREE.EventDispatcher {
         this.scene.fog = new THREE.Fog(0x008011, 1, 500);
 
         // Light configuration
-        const hemiLight = new THREE.HemisphereLight(0xa1a1a1, 0xa1a1a1, 0.2);
+        const hemiLight = new THREE.HemisphereLight(0xa1a1a1, 0xa1a1a1, 0.4);
         hemiLight.color.setHSL(0.6, 1, 0.6);
         hemiLight.groundColor.setHSL(0.095, 1, 0.75);
         hemiLight.position.set(10, 50, 10);
         this.scene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
         dirLight.color.setHSL(0.1, 1, 0.95);
         dirLight.position.set(1.7, 1.75, 2);
         dirLight.position.multiplyScalar(30);
@@ -163,7 +166,6 @@ class Game extends THREE.EventDispatcher {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.shadowMap.enabled = true;
         this.renderer.toneMapping = THREE.LinearToneMapping;
         document.body.appendChild(this.renderer.domElement);
@@ -316,8 +318,10 @@ class Game extends THREE.EventDispatcher {
         console.log("reset");
 
         // Reset the player
+        this.player.reset();
 
         // Reset all the objects
+        this.objects.reset();
 
         // Reset the UI
     }
@@ -333,14 +337,14 @@ class Game extends THREE.EventDispatcher {
         console.log("dropBallOnGround");
 
         this.objects.position.set(0, -2, 0);
-        this.player.playBallDropAnimation();
 
-        
+        Ui.toggleResetButton(true);
     }
 
     touchRedBlock() {
         console.log("touchRedBlock");
 
+        Ui.toggleResetButton(true);
     }
 }
 
