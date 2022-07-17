@@ -1,15 +1,17 @@
 import * as THREE from "three";
-import { Elastic, gsap } from "gsap";
+import { gsap } from "gsap";
 import { FlakesTexture } from "three/examples/jsm/textures/FlakesTexture.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Game, { sceneConfiguration } from "../game";
 import Tools from "game/tools";
-import { TweenLite } from "gsap/gsap-core";
 
 const beakGlbFilePath = process.env.PUBLIC_URL + "/models/beakWithBall.glb";
 const ballTexturePath = process.env.PUBLIC_URL + "/img/ball.jpg";
 const ballLightMapPath = process.env.PUBLIC_URL + "/img/latexballoonmatcap.png";
 const ballEnvMapPath = process.env.PUBLIC_URL + "/img/2_env.jpg";
+const trackTexturePath = process.env.PUBLIC_URL + "/img/dotted.png";
+const stabSuccessTexturePath = process.env.PUBLIC_URL + "/img/star.png";
+const stabFailedTexturePath = process.env.PUBLIC_URL + "/img/sparkle.png";
 
 export default class Player extends THREE.Object3D {
     constructor() {
@@ -22,6 +24,9 @@ export default class Player extends THREE.Object3D {
         // Init all the loaders
         this.textureLoader = new THREE.TextureLoader();
         this.glftLoader = new GLTFLoader();
+
+        this.visualObjectsContainer = new THREE.Object3D();
+        this.add(this.visualObjectsContainer);
 
         // The glb file loaded from loader of the beak
         this.beakGlb = null;
@@ -87,6 +92,20 @@ export default class Player extends THREE.Object3D {
 
         // The bounce animation of gsap
         this.bounceAnimation = null;
+
+        // The beak shake animation of gsap
+        this.beakShakeAnimation = null;
+
+        // The track image of the ball
+        this.trackOfBall = null;
+
+        // The effects of successful stab
+        this.effectSuccessStab1 = null;
+        this.effectSuccessStab2 = null;
+
+        // The effects of unsuccessful stab
+        this.effectFailedStab1 = null;
+        this.effectFailedStab2 = null;
     }
 
     async init() {
@@ -94,7 +113,7 @@ export default class Player extends THREE.Object3D {
         this.glftLoader = new GLTFLoader();
 
         this.beakGlb = await this.glftLoader.loadAsync(beakGlbFilePath);
-        console.log(this.beakGlb);
+        //console.log(this.beakGlb);
 
         const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xfcba03, side: THREE.DoubleSide });
         this.beakScene = this.beakGlb.scene;
@@ -177,6 +196,41 @@ export default class Player extends THREE.Object3D {
         this.ballFlyAwayClip.clampWhenFinished = true;
 
         this.ballBendClip = this.mixer.clipAction(this.beakGlb.animations[6]);
+
+        // Add track image
+        var trackTexture = this.textureLoader.load(trackTexturePath);
+        var trackMaterial = new THREE.MeshStandardMaterial({ map: trackTexture, transparent: true });
+        var trackGeometry = new THREE.PlaneBufferGeometry(0.65, 1);
+        this.trackOfBall = new THREE.Mesh(trackGeometry, trackMaterial);
+        this.trackOfBall.position.set(0, 0, 2);
+        this.visualObjectsContainer.add(this.trackOfBall);
+        this.trackOfBall.rotation.z = Math.PI;
+        this.trackOfBall.visible = false;
+
+        // Add the successful stab effects
+        var effectSuccessTexture = this.textureLoader.load(stabSuccessTexturePath);
+        var effectSuccessMaterial = new THREE.MeshPhongMaterial({ map: effectSuccessTexture, transparent: true, depthWrite: false });
+        var effectSuccessGeometry = new THREE.PlaneBufferGeometry(2.5, 2.5);
+        this.effectSuccessStab1 = new THREE.Mesh(effectSuccessGeometry, effectSuccessMaterial);
+        this.effectSuccessStab1.position.set(0, 0, 0.55);
+        this.visualObjectsContainer.add(this.effectSuccessStab1);
+        this.effectSuccessStab1.visible = false;
+        this.effectSuccessStab2 = this.effectSuccessStab1.clone();
+        this.visualObjectsContainer.add(this.effectSuccessStab2);
+        this.effectSuccessStab2.visible = false;
+
+        // Add the failed stab effects
+        var effectFailedTexture = this.textureLoader.load(stabFailedTexturePath);
+        var effectFailedMaterial = new THREE.MeshPhongMaterial({ map: effectFailedTexture, transparent: true, depthWrite: false });
+        effectFailedMaterial.transparent = true;
+        var effectFailedGeometry = new THREE.PlaneBufferGeometry(2.5, 2.5);
+        this.effectFailedStab1 = new THREE.Mesh(effectFailedGeometry, effectFailedMaterial);
+        this.effectFailedStab1.position.set(0, 0, 0.8);
+        this.visualObjectsContainer.add(this.effectFailedStab1);
+        this.effectFailedStab1.visible = false;
+        this.effectFailedStab2 = this.effectFailedStab1.clone();
+        this.visualObjectsContainer.add(this.effectFailedStab2);
+        this.effectFailedStab2.visible = false;
     }
 
     update() {
@@ -187,21 +241,31 @@ export default class Player extends THREE.Object3D {
             } else {
                 // If the beak is not attached, update
                 this.mixer.update(this.clock.getDelta());
-                
+
                 if (this.isInteractable) {
                     if (!this.isAttached) {
                         let timeDelta = this.clock.elapsedTime - this.t0;
-                        this.ballHeight = -9.8 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
-                        this.ballSpeed = -9.8 * timeDelta + this.v0;
+                        this.ballHeight = sceneConfiguration.gravityAcceleration * 0.5 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
+                        this.ballSpeed = sceneConfiguration.gravityAcceleration * timeDelta + this.v0;
                         Game.objects.position.set(0, -this.ballHeight, 0);
-    
-                        //console.log(this.ballHeight);
+
+                        // Activate the track of the ball
+                        this.trackOfBall.visible = true;
+                        this.trackOfBall.scale.set(1, this.ballSpeed, 1);
+
+                        // Game over if the ball falls below 2
                         if (this.ballHeight < 2) {
                             // Game over
                             Game.dropBallOnGround();
                             this.isInteractable = false;
                             this.playBallDropAnimation();
+
+                            // Deactivate the track of the ball
+                            this.trackOfBall.visible = false;
                         }
+                    } else {
+                        // Deactivate the track of the ball
+                        this.trackOfBall.visible = false;
                     }
                 }
             }
@@ -233,9 +297,7 @@ export default class Player extends THREE.Object3D {
 
         this.beakMesh.visible = true;
         this.ballMesh.position.y = 0;
-        if (this.bounceAnimation != null) {
-            this.bounceAnimation.kill();
-        }
+        gsap.killTweensOf(this.ballMesh.position);
 
         // Move the game object to the - initial position
         Game.objects.position.set(0, -sceneConfiguration.ballInitialHeight, 0);
@@ -270,6 +332,11 @@ export default class Player extends THREE.Object3D {
 
                     // Save the initial speed of the ball
                     this.v0 = Tools.lerp(0, this.actualBallMaxSpeed, factor);
+                    
+                    // Shake the scene according to the factor
+                    this.beakShakeAnimation = gsap.fromTo(this.beakScene.rotation, { x: factor / 6 }, { x: 0, duration: 0.05, repeat: -1, ease: "elastic.out(1, 0.3)" });
+                    
+                    // 
                 }
             }
         }
@@ -331,6 +398,12 @@ export default class Player extends THREE.Object3D {
 
                 gsap.fromTo(this.beakScene.rotation, { x: 0.2 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
 
+                // Play the stab success animation
+                this.playStabSuccessAnimation();
+
+                // Add mark of stab
+                Game.objects.addMarkOfStab();
+
                 //////////
                 // Stop the ball
                 this.isAttached = true;
@@ -343,6 +416,12 @@ export default class Player extends THREE.Object3D {
                 this.ballFlyAwayClip.stop();
                 this.beakStabFailedClip.reset();
                 this.beakStabFailedClip.play();
+
+                // Play the stab failed animation
+                this.playStabFailedAnimation();
+
+                // Shake the greyBlock
+                Game.objects.shakeBox(intersects[0].object);
 
                 //////////
                 // Stop the ball for 1 seconds
@@ -372,13 +451,18 @@ export default class Player extends THREE.Object3D {
                 this.ballFlyAwayClip.reset();
                 this.ballFlyAwayClip.play();
 
+                this.trackOfBall.visible = false;
+
+                // Play the stab failed animation
+                this.playStabFailedAnimation();
+
                 //////////
                 this.isInteractable = false;
                 this.isAttached = false;
                 this.isBeingPressed = false;
                 break;
             case "targetImg":
-                // Touche the target image, get bonus on the initial speed
+                // Touche the track image, get bonus on the initial speed
                 this.beakStabFailedClip.stop();
                 this.beakFlyAwayClip.stop();
                 this.ballFlyAwayClip.stop();
@@ -387,8 +471,14 @@ export default class Player extends THREE.Object3D {
 
                 gsap.fromTo(this.beakScene.rotation, { x: 0.2 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
 
-                // Change the ball's max initial speed to 
+                // Change the ball's max initial speed to
                 this.actualBallMaxSpeed = sceneConfiguration.ballMaxBonusInitialSpeed;
+
+                // Play the stab success animation
+                this.playStabSuccessAnimation();
+
+                // Add mark of stab
+                Game.objects.addMarkOfStab();
 
                 //////////
                 this.isAttached = true;
@@ -402,6 +492,9 @@ export default class Player extends THREE.Object3D {
     // Release the ball
     release() {
         //console.log("release");
+        
+        // Stop the beak shake animation
+        gsap.killTweensOf(this.beakScene.rotation);
 
         // Restore the original ballMaxInitialSpeed;
         this.actualBallMaxSpeed = sceneConfiguration.ballMaxInitialSpeed;
@@ -435,5 +528,31 @@ export default class Player extends THREE.Object3D {
         this.ballMesh.position.y = 0;
         this.bounceAnimation = gsap.to(this.ballMesh.position, { duration: 1, y: -0.17, ease: "bounce" });
         this.beakMesh.visible = false;
+    }
+
+    playStabSuccessAnimation() {
+        this.effectSuccessStab1.visible = true;
+        this.effectSuccessStab1.rotation.z = Math.random() * Math.PI * 2;
+        gsap.fromTo(this.effectSuccessStab1.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectSuccessStab1.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectSuccessStab1.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
+        this.effectSuccessStab2.visible = true;
+        this.effectSuccessStab2.rotation.z = Math.random() * Math.PI * 2;
+        gsap.fromTo(this.effectSuccessStab2.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectSuccessStab2.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectSuccessStab2.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
+    }
+
+    playStabFailedAnimation() {
+        this.effectFailedStab1.visible = true;
+        this.effectFailedStab1.rotation.z = Math.random() * Math.PI * 2;
+        gsap.fromTo(this.effectFailedStab1.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectFailedStab1.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectFailedStab1.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
+        this.effectFailedStab2.visible = true;
+        this.effectFailedStab2.rotation.z = Math.random() * Math.PI * 2;
+        gsap.fromTo(this.effectFailedStab2.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectFailedStab2.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectFailedStab2.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
     }
 }

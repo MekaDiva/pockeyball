@@ -6,7 +6,6 @@ import Objects from "game/objects";
 import Player from "game/player";
 import Ui from "game/ui";
 import Tools from "game/tools";
-import CollisionDetection from "game/collisionDetection";
 
 const skyFloorTexture = process.env.PUBLIC_URL + "/img/sky.jpg";
 
@@ -55,11 +54,14 @@ export const sceneConfiguration = {
     // How many score points
     playerScore: 0,
 
+    // The gravity acceleration of the game
+    gravityAcceleration: -9.8,
+
     // How much is the max speed up
-    ballMaxInitialSpeed: 30,
+    ballMaxInitialSpeed: 15,
 
     // How much is the max speed when touch the target
-    ballMaxBonusInitialSpeed: 45,
+    ballMaxBonusInitialSpeed: 25,
 
     // The initial height of the ball attached to the path
     ballInitialHeight: 3,

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { gsap } from "gsap";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Game, { sceneConfiguration } from "../game";
 import Tools from "game/tools";
@@ -13,6 +14,7 @@ const tree1GlbPath = process.env.PUBLIC_URL + "/models/tree1.glb";
 const tree2GlbPath = process.env.PUBLIC_URL + "/models/tree2.glb";
 const brancheGlbPath = process.env.PUBLIC_URL + "/models/branche.glb";
 const targetImgPath = process.env.PUBLIC_URL + "/img/target.png";
+const markOfStabTexturePath = process.env.PUBLIC_URL + "/img/circle.png";
 
 export default class Objects extends THREE.Object3D {
     constructor() {
@@ -24,12 +26,18 @@ export default class Objects extends THREE.Object3D {
 
         this.addBasicGeometries = this.addBasicGeometries.bind(this);
         this.addGlbModel = this.addGlbModel.bind(this);
-
+        
+        // Purly visual objects, will not be refreshed during reset
         this.visualObjectsContainer = new THREE.Object3D();
         this.add(this.visualObjectsContainer);
 
+        // Obstacles objects, will receive raycast from player, will be refreshed during reset
         this.obstaclesContainer = new THREE.Object3D();
         this.add(this.obstaclesContainer);
+
+        // Decoration for the obstacles' objects, will not receive raycast from player, will be refreshed during reset
+        this.obstaclesDecorationContainer = new THREE.Object3D();
+        this.add(this.obstaclesDecorationContainer);
 
         // Array of cloud
         this.cloudArray = [];
@@ -61,6 +69,9 @@ export default class Objects extends THREE.Object3D {
         // Init all the loaders
         this.textureLoader = new THREE.TextureLoader();
         this.glftLoader = new GLTFLoader();
+
+        // The round mark of stab
+        this.markOfStab = null;
     }
 
     async init() {
@@ -117,37 +128,15 @@ export default class Objects extends THREE.Object3D {
             this.visualObjectsContainer.add(tree);
         }
 
-        // Add the branche to the basic path
-        var branchesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.brancheNumber);
-        for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
-            if (index > 1) {
-                var brancheType = Tools.randomNum(0, 2);
-                var yPosition = branchesDistance * index;
-                switch (brancheType) {
-                    case 0:
-                        // Left
-                        var branche = this.branche.clone();
-                        branche.position.set(-1, yPosition + 0.5, 0);
-                        this.visualObjectsContainer.add(branche);
-                        break;
-                    case 1:
-                        // Right
-                        var branche = this.branche.clone();
-                        branche.rotation.y = Math.PI;
-                        branche.position.set(1, yPosition + 0.5, 0);
-                        this.visualObjectsContainer.add(branche);
-                        break;
-                    case 2:
-                        // Do nothing
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-
         // Add the basic path to the obstaclesContainer
         this.addBasicPath();
+
+        // Add mark of stab
+        var markOfStabTexture = this.textureLoader.load(markOfStabTexturePath);
+        var markMaterial = new THREE.MeshPhongMaterial({ color: 0x000000, map: markOfStabTexture, transparent: true, depthWrite: false });
+        var markGeometry = new THREE.PlaneBufferGeometry(0.2, 0.2);
+        this.markOfStab = new THREE.Mesh(markGeometry, markMaterial);
+        this.markOfStab.position.set(0, 0, 0.55);
     }
 
     update() {
@@ -164,13 +153,21 @@ export default class Objects extends THREE.Object3D {
         while (this.obstaclesContainer.children.length) {
             this.obstaclesContainer.remove(this.obstaclesContainer.children[0]);
         }
+
+        while (this.obstaclesDecorationContainer.children.length) {
+            this.obstaclesDecorationContainer.remove(this.obstaclesDecorationContainer.children[0]);
+        }
     }
 
     reset() {
-        console.log('reset objects');
+        console.log("reset objects");
 
         while (this.obstaclesContainer.children.length) {
             this.obstaclesContainer.remove(this.obstaclesContainer.children[0]);
+        }
+
+        while (this.obstaclesDecorationContainer.children.length) {
+            this.obstaclesDecorationContainer.remove(this.obstaclesDecorationContainer.children[0]);
         }
 
         this.addBasicPath();
@@ -184,6 +181,35 @@ export default class Objects extends THREE.Object3D {
         this.basicPath.position.set(0, 0.5 * sceneConfiguration.pathHeight, 0);
         this.basicPath.name = "basicPath";
         this.obstaclesContainer.add(this.basicPath);
+
+        // Add the branche to the basic path
+        var branchesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.brancheNumber);
+        for (let index = 0; index < sceneConfiguration.brancheNumber; index++) {
+            if (index > 1) {
+                var brancheType = Tools.randomNum(0, 2);
+                var yPosition = branchesDistance * index;
+                switch (brancheType) {
+                    case 0:
+                        // Left
+                        var branche = this.branche.clone();
+                        branche.position.set(-1, yPosition + 0.5, 0);
+                        this.obstaclesDecorationContainer.add(branche);
+                        break;
+                    case 1:
+                        // Right
+                        var branche = this.branche.clone();
+                        branche.rotation.y = Math.PI;
+                        branche.position.set(1, yPosition + 0.5, 0);
+                        this.obstaclesDecorationContainer.add(branche);
+                        break;
+                    case 2:
+                        // Do nothing
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
 
         // Add three types of obstacles
         var obstaclesDistance = Math.round(sceneConfiguration.pathHeight / sceneConfiguration.obstacleNumber);
@@ -212,8 +238,7 @@ export default class Objects extends THREE.Object3D {
                     case 2:
                         // Add the acceleration target to the basic path
                         var targetTexture = this.textureLoader.load(targetImgPath);
-                        var targetMaterial = new THREE.MeshStandardMaterial({ map: targetTexture });
-                        targetMaterial.transparent = true;
+                        var targetMaterial = new THREE.MeshPhongMaterial({ map: targetTexture, transparent: true });
                         var targetGeometry = new THREE.PlaneBufferGeometry(1, 1);
                         var targetMesh = this.addBasicGeometries(targetGeometry, targetMaterial);
                         targetMesh.name = "targetImg";
@@ -248,5 +273,15 @@ export default class Objects extends THREE.Object3D {
         }
 
         return glbMesh;
+    }
+
+    addMarkOfStab() {
+        var mark = this.markOfStab.clone();
+        mark.position.set(0, -this.position.y, 0.55);
+        this.obstaclesDecorationContainer.add(mark);
+    }
+
+    shakeBox(object3D) {
+        gsap.fromTo(object3D.position, { z: 0.4 }, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
     }
 }
