@@ -145,7 +145,7 @@ class Game extends THREE.EventDispatcher {
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 1);
         dirLight.color.setHSL(0.1, 1, 0.95);
-        dirLight.position.set(1.7, 1.75, 2);
+        dirLight.position.set(1.5, 3, 3);
         dirLight.position.multiplyScalar(30);
         this.scene.add(dirLight);
 

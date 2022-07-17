@@ -10,6 +10,7 @@ const ballTexturePath = process.env.PUBLIC_URL + "/img/ball.jpg";
 const ballLightMapPath = process.env.PUBLIC_URL + "/img/latexballoonmatcap.png";
 const ballEnvMapPath = process.env.PUBLIC_URL + "/img/2_env.jpg";
 const trackTexturePath = process.env.PUBLIC_URL + "/img/dotted.png";
+const chargeTexturePath = process.env.PUBLIC_URL + "/img/aura.png";
 const stabSuccessTexturePath = process.env.PUBLIC_URL + "/img/star.png";
 const stabFailedTexturePath = process.env.PUBLIC_URL + "/img/sparkle.png";
 
@@ -73,6 +74,9 @@ export default class Player extends THREE.Object3D {
         // Is the beak is attached to the column
         this.isAttached = true;
 
+        // If the ball stab the target, isCharged is true
+        this.isCharged = false;
+
         // Actual max speed of the ball
         this.actualBallMaxSpeed = sceneConfiguration.ballMaxInitialSpeed;
 
@@ -99,6 +103,9 @@ export default class Player extends THREE.Object3D {
         // The track image of the ball
         this.trackOfBall = null;
 
+        // The charge image of the ball
+        this.chargeOfBall = null;
+
         // The effects of successful stab
         this.effectSuccessStab1 = null;
         this.effectSuccessStab2 = null;
@@ -106,6 +113,9 @@ export default class Player extends THREE.Object3D {
         // The effects of unsuccessful stab
         this.effectFailedStab1 = null;
         this.effectFailedStab2 = null;
+
+        // Get the original position of the camera
+        this.cameraInitialPosition = Game.camera.position.clone();
     }
 
     async init() {
@@ -199,13 +209,22 @@ export default class Player extends THREE.Object3D {
 
         // Add track image
         var trackTexture = this.textureLoader.load(trackTexturePath);
-        var trackMaterial = new THREE.MeshStandardMaterial({ map: trackTexture, transparent: true });
+        var trackMaterial = new THREE.MeshPhongMaterial({ map: trackTexture, transparent: true, depthWrite: false });
         var trackGeometry = new THREE.PlaneBufferGeometry(0.65, 1);
         this.trackOfBall = new THREE.Mesh(trackGeometry, trackMaterial);
         this.trackOfBall.position.set(0, 0, 2);
         this.visualObjectsContainer.add(this.trackOfBall);
         this.trackOfBall.rotation.z = Math.PI;
         this.trackOfBall.visible = false;
+
+        // Add charge image
+        var chargeTexture = this.textureLoader.load(chargeTexturePath);
+        var chargeMaterial = new THREE.MeshPhongMaterial({ map: chargeTexture, transparent: true, depthWrite: false, color: 0xff0000, opacity: 0 });
+        var chargeGeometry = new THREE.PlaneBufferGeometry(1.5, 1);
+        this.chargeOfBall = new THREE.Mesh(chargeGeometry, chargeMaterial);
+        this.chargeOfBall.position.set(0, 0, 2);
+        this.visualObjectsContainer.add(this.chargeOfBall);
+        this.chargeOfBall.visible = true;
 
         // Add the successful stab effects
         var effectSuccessTexture = this.textureLoader.load(stabSuccessTexturePath);
@@ -253,6 +272,13 @@ export default class Player extends THREE.Object3D {
                         this.trackOfBall.visible = true;
                         this.trackOfBall.scale.set(1, this.ballSpeed, 1);
 
+                        // Deactivate the charge effect when speed reaches 0
+                        if (this.ballSpeed < 0 && this.isCharged) {
+                            gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+                            this.trackOfBall.material.color.set(0xffffff);
+                            this.isCharged = false;
+                        }
+
                         // Game over if the ball falls below 2
                         if (this.ballHeight < 2) {
                             // Game over
@@ -262,6 +288,11 @@ export default class Player extends THREE.Object3D {
 
                             // Deactivate the track of the ball
                             this.trackOfBall.visible = false;
+
+                            // Deactivate the charge effect
+                            gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+                            this.trackOfBall.material.color.set(0xffffff);
+                            this.isCharged = false;
                         }
                     } else {
                         // Deactivate the track of the ball
@@ -332,11 +363,18 @@ export default class Player extends THREE.Object3D {
 
                     // Save the initial speed of the ball
                     this.v0 = Tools.lerp(0, this.actualBallMaxSpeed, factor);
-                    
+
                     // Shake the scene according to the factor
-                    this.beakShakeAnimation = gsap.fromTo(this.beakScene.rotation, { x: factor / 6 }, { x: 0, duration: 0.05, repeat: -1, ease: "elastic.out(1, 0.3)" });
-                    
-                    // 
+                    this.beakShakeAnimation = gsap.fromTo(
+                        this.beakScene.rotation,
+                        { x: factor / 6 },
+                        { x: 0, duration: 0.05, repeat: -1, ease: "elastic.out(1, 0.3)" }
+                    );
+
+                    // Move the camera backwards
+                    const cameraBackwardsDistanceMax = 2;
+                    var cameraBackwardsDistance = Tools.lerp(0, cameraBackwardsDistanceMax, factor);
+                    Game.camera.position.z = this.cameraInitialPosition.z + cameraBackwardsDistance;
                 }
             }
         }
@@ -420,6 +458,9 @@ export default class Player extends THREE.Object3D {
                 // Play the stab failed animation
                 this.playStabFailedAnimation();
 
+                // Add mark of stab
+                Game.objects.addMarkOfStab(0x525252);
+
                 // Shake the greyBlock
                 Game.objects.shakeBox(intersects[0].object);
 
@@ -456,6 +497,17 @@ export default class Player extends THREE.Object3D {
                 // Play the stab failed animation
                 this.playStabFailedAnimation();
 
+                // Add mark of stab
+                Game.objects.addMarkOfStab(0x940000);
+
+                // Deactivate the charge effect
+                gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+                this.trackOfBall.material.color.set(0xffffff);
+                this.isCharged = false;
+
+                // Add the camera shake animation
+                
+
                 //////////
                 this.isInteractable = false;
                 this.isAttached = false;
@@ -480,6 +532,10 @@ export default class Player extends THREE.Object3D {
                 // Add mark of stab
                 Game.objects.addMarkOfStab();
 
+                // Play the charge animation
+
+                this.isCharged = true;
+
                 //////////
                 this.isAttached = true;
                 this.isBeingPressed = false;
@@ -492,9 +548,14 @@ export default class Player extends THREE.Object3D {
     // Release the ball
     release() {
         //console.log("release");
-        
+
+        // Move the camera back to initial position
+        gsap.to(Game.camera.position, { duration: 0.3, z: this.cameraInitialPosition.z, ease: "elastic.out(0.5, 0.5)" });
+        //Game.camera.position.copy(this.cameraInitialPosition);
+
         // Stop the beak shake animation
         gsap.killTweensOf(this.beakScene.rotation);
+        this.beakScene.rotation.x = 0;
 
         // Restore the original ballMaxInitialSpeed;
         this.actualBallMaxSpeed = sceneConfiguration.ballMaxInitialSpeed;
@@ -512,6 +573,12 @@ export default class Player extends THREE.Object3D {
 
         // Save the initial time of the release
         this.t0 = this.clock.elapsedTime;
+
+        // If the ball stab the target
+        if (this.isCharged) {
+            gsap.to(this.chargeOfBall.material, { opacity: 1, duration: 0.3, ease: "power2" });
+            this.trackOfBall.material.color.set(0xff0000);
+        }
 
         //////////
         this.isAttached = false;

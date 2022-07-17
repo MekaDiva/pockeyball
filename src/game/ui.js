@@ -13,7 +13,6 @@ class Ui extends THREE.EventDispatcher {
 
         this.init = this.init.bind(this);
         this.toggleResetButton = this.toggleResetButton.bind(this);
-        this.toggleAlert = this.toggleAlert.bind(this);
 
         // The reset button
         this.resetButton = null;
@@ -80,26 +79,8 @@ class Ui extends THREE.EventDispatcher {
         }
     }
 
-    toggleAlert(isActive, text = "Alert") {
-        console.log("toggleAlert");
-        if (isActive) {
-            // Add reset button
-            let alert = document.createElement("p");
-            alert.id = "alert";
-            alert.innerText = text;
-            alert.style.fontSize = "50px";
-            alert.style.color = "black";
-            alert.style.textAlign = "center";
-            alert.style.position = "absolute";
-            alert.style.left = "calc(50% - 250px)";
-            alert.style.top = "calc(50% - 50px)";
-            alert.style.width = "500px";
-            alert.style.height = "100px";
+    add240Points() {
 
-            document.body.appendChild(alert);
-        } else {
-            document.getElementById("alert").remove();
-        }
     }
 
     showCurrentScore() {

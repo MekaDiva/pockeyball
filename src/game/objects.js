@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { gsap } from "gsap";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Game, { sceneConfiguration } from "../game";
@@ -127,6 +128,8 @@ export default class Objects extends THREE.Object3D {
             tree.position.copy(positionOfTree);
             this.visualObjectsContainer.add(tree);
         }
+
+        
 
         // Add the basic path to the obstaclesContainer
         this.addBasicPath();
@@ -275,13 +278,21 @@ export default class Objects extends THREE.Object3D {
         return glbMesh;
     }
 
-    addMarkOfStab() {
+    addMarkOfStab(color = 0x000000) {
         var mark = this.markOfStab.clone();
+        var markMaterial = this.markOfStab.material.clone();
+        mark.material = markMaterial;
+        mark.material.color.set(color);
         mark.position.set(0, -this.position.y, 0.55);
+        if (color !== 0x000000) {
+            mark.material.color.set(color);
+            mark.position.set(0, -this.position.y, 0.75);
+        }
+
         this.obstaclesDecorationContainer.add(mark);
     }
 
     shakeBox(object3D) {
-        gsap.fromTo(object3D.position, { z: 0.4 }, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
+        gsap.fromTo(object3D.position, { z: 0.5 }, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
     }
 }
