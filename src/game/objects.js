@@ -1,9 +1,10 @@
 import * as THREE from "three";
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { gsap } from "gsap";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Game, { sceneConfiguration } from "../game";
 import Tools from "game/tools";
+import Ui from "game/ui";
 
 const floorTexturePath = process.env.PUBLIC_URL + "/img/cube2_3.jpg";
 const skyTexturePath = process.env.PUBLIC_URL + "/img/cube0145.jpg";
@@ -17,6 +18,12 @@ const brancheGlbPath = process.env.PUBLIC_URL + "/models/branche.glb";
 const targetImgPath = process.env.PUBLIC_URL + "/img/target.png";
 const markOfStabTexturePath = process.env.PUBLIC_URL + "/img/circle.png";
 
+const finalLineTexturePath = process.env.PUBLIC_URL + "/img/checker.png";
+const score2ImgPath = process.env.PUBLIC_URL + "/img/2.png";
+const score5ImgPath = process.env.PUBLIC_URL + "/img/5.png";
+const score11ImgPath = process.env.PUBLIC_URL + "/img/11.png";
+const score20ImgPath = process.env.PUBLIC_URL + "/img/20.png";
+
 export default class Objects extends THREE.Object3D {
     constructor() {
         super();
@@ -27,7 +34,7 @@ export default class Objects extends THREE.Object3D {
 
         this.addBasicGeometries = this.addBasicGeometries.bind(this);
         this.addGlbModel = this.addGlbModel.bind(this);
-        
+
         // Purly visual objects, will not be refreshed during reset
         this.visualObjectsContainer = new THREE.Object3D();
         this.add(this.visualObjectsContainer);
@@ -73,6 +80,9 @@ export default class Objects extends THREE.Object3D {
 
         // The round mark of stab
         this.markOfStab = null;
+
+        // The portal for the ball
+        this.portal = new THREE.Object3D();
     }
 
     async init() {
@@ -98,7 +108,9 @@ export default class Objects extends THREE.Object3D {
         const cloudMaterial = new THREE.MeshToonMaterial({ color: 0xffffff });
 
         this.cloud0 = await this.addGlbModel(cloud0GlbPath, cloudMaterial, this.cloudArray);
+        this.cloud0.receiveShadow = false;
         this.cloud1 = await this.addGlbModel(cloud1GlbPath, cloudMaterial, this.cloudArray);
+        this.cloud1.receiveShadow = false;
 
         const treeTexture = this.textureLoader.load(treeTexturePath);
         const treeMaterial = new THREE.MeshStandardMaterial({ map: treeTexture, side: THREE.DoubleSide });
@@ -110,9 +122,9 @@ export default class Objects extends THREE.Object3D {
         this.branche = await this.addGlbModel(brancheGlbPath, treeMaterial);
 
         // Add cloud to the scene
-        const centerOfCloud = new THREE.Vector3(0, sceneConfiguration.cloudHeight, 0);
+        const centerOfCloud = new THREE.Vector3(0, sceneConfiguration.pathHeight * 0.75, -5);
         for (let index = 0; index < sceneConfiguration.cloudNumber; index++) {
-            var positionOfCloud = Tools.randomSurfacePoint(centerOfCloud, sceneConfiguration.cloudRange);
+            var positionOfCloud = Tools.randomSurfacePoint(centerOfCloud, sceneConfiguration.cloudRange, sceneConfiguration.pathHeight / 2, false);
             var cloudType = Tools.randomNum(0, 1);
             var cloud = this.cloudArray[cloudType].clone();
             cloud.position.copy(positionOfCloud);
@@ -122,17 +134,12 @@ export default class Objects extends THREE.Object3D {
         // Add tree to scene
         const centerOfForest = new THREE.Vector3(0, 0, -sceneConfiguration.treeRange / 2 - 5);
         for (let index = 0; index < sceneConfiguration.treeNumber; index++) {
-            var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange);
+            var positionOfTree = Tools.randomSurfacePoint(centerOfForest, sceneConfiguration.treeRange, sceneConfiguration.treeRange);
             var treeType = Tools.randomNum(0, 2);
             var tree = this.treeArray[treeType].clone();
             tree.position.copy(positionOfTree);
             this.visualObjectsContainer.add(tree);
         }
-
-        
-
-        // Add the basic path to the obstaclesContainer
-        this.addBasicPath();
 
         // Add mark of stab
         var markOfStabTexture = this.textureLoader.load(markOfStabTexturePath);
@@ -140,10 +147,13 @@ export default class Objects extends THREE.Object3D {
         var markGeometry = new THREE.PlaneBufferGeometry(0.2, 0.2);
         this.markOfStab = new THREE.Mesh(markGeometry, markMaterial);
         this.markOfStab.position.set(0, 0, 0.55);
+
+        // Add the basic path to the obstaclesContainer
+        this.addBasicPath();
     }
 
     update() {
-        //console.log(this.loaderLoaded);
+
     }
 
     destroy() {
@@ -177,6 +187,9 @@ export default class Objects extends THREE.Object3D {
     }
 
     addBasicPath() {
+        // Add mark of stab
+        this.addMarkOfStab();
+
         // Add the basic path
         var geometry = new THREE.BoxGeometry(2, sceneConfiguration.pathHeight, 1);
         var material = new THREE.MeshStandardMaterial({ color: 0x00b1b8, metalness: 0, side: THREE.DoubleSide });
@@ -256,6 +269,68 @@ export default class Objects extends THREE.Object3D {
                 }
             }
         }
+
+        const finalLineHeight = sceneConfiguration.pathHeight;
+        //const finalLineHeight = 6;
+
+        // Add the final line and score multiplier on the path
+        const finalLineGeometry = new THREE.BoxGeometry(5, 0.5, 1.5);
+        const finalLineTexture = this.textureLoader.load(finalLineTexturePath);
+        finalLineTexture.wrapS = finalLineTexture.wrapT = THREE.RepeatWrapping;
+        finalLineTexture.repeat.set(4, 1);
+        const finalLineMaterial = new THREE.MeshStandardMaterial({ map: finalLineTexture});
+        this.finalLineMesh = this.addBasicGeometries(finalLineGeometry, finalLineMaterial);
+        this.finalLineMesh.castShadow = false;
+        this.finalLineMesh.position.set(0, finalLineHeight - 0.25, 0);
+        this.obstaclesDecorationContainer.add(this.finalLineMesh);
+
+        // Add all the score multiplier to the final line
+        const texturePaths = [];
+        texturePaths.push(score2ImgPath);
+        texturePaths.push(score5ImgPath);
+        texturePaths.push(score11ImgPath);
+        texturePaths.push(score20ImgPath);
+
+        const scoreNames = [];
+        scoreNames.push("2", "5", "11", "20");
+
+        const scoreColors = [];
+        scoreColors.push(0x209ffe, 0x48d028, 0xffe22e, 0xffa82d);
+
+        const scoreSize = 2;
+
+        for (let index = 0; index < 4; index++) {
+            const backgroundGeometry = new THREE.BoxGeometry(scoreSize + 0.2, scoreSize, 1.2);
+            const backgroundMaterial = new THREE.MeshStandardMaterial({ color: scoreColors[index]});
+            var backgroundMesh = this.addBasicGeometries(backgroundGeometry, backgroundMaterial);
+            backgroundMesh.castShadow = false;
+            backgroundMesh.position.set(0, finalLineHeight + scoreSize / 2 + scoreSize * index, 0);
+            this.obstaclesDecorationContainer.add(backgroundMesh);
+
+
+            const scoreGeometry = new THREE.PlaneBufferGeometry(scoreSize, scoreSize);
+            const scoreTexture = this.textureLoader.load(texturePaths[index]);
+            const scoreMaterial = new THREE.MeshPhongMaterial({ map: scoreTexture, transparent: true, depthWrite: false });
+            const scoreMesh = new THREE.Mesh(scoreGeometry, scoreMaterial);
+            scoreMesh.name = scoreNames[index];
+            scoreMesh.position.set(0, finalLineHeight + scoreSize / 2 + scoreSize * index, 0.65);
+            this.obstaclesDecorationContainer.add(scoreMesh);
+        }
+
+        // Add the portal for the ball
+        const ringGeometry = new THREE.TorusGeometry(1, 0.1, 16, 100);
+        const ringMaterial = new THREE.MeshStandardMaterial({ color: 0x0022ff});
+        const ringMesh = this.addBasicGeometries(ringGeometry, ringMaterial);
+        this.portal.add(ringMesh);
+        ringMesh.rotation.x = 0.5 * Math.PI;
+        const portalGeometry = new THREE.CylinderGeometry(1, 1, 0.05, 16, 1);
+        const portalMaterial = new THREE.MeshPhongMaterial({ color: 0x91a0ff, opacity: 0.5, transparent: true, depthWrite: false });
+        const portalMesh = this.addBasicGeometries(portalGeometry, portalMaterial);
+        portalMesh.castShadow = false;
+        this.portal.add(portalMesh);
+        this.portal.position.set(0, finalLineHeight - 0.8, 2);
+        this.obstaclesDecorationContainer.add(this.portal);
+        this.portal.scale.set(0, 0, 0);
     }
 
     addBasicGeometries(geometry, material) {
@@ -294,5 +369,13 @@ export default class Objects extends THREE.Object3D {
 
     shakeBox(object3D) {
         gsap.fromTo(object3D.position, { z: 0.5 }, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
+    }
+
+    activatePortal() {
+        gsap.fromTo(this.portal.scale, { x: 0, y: 0, z: 0}, { x: 1, y: 1, z: 1, duration: 0.5, ease: "back" });
+    }
+
+    deactivatePortal() {
+        gsap.fromTo(this.portal.scale, { x: 1, y: 1, z: 1}, { x: 0, y: 0, z: 0, duration: 0.5, ease: "power2" });
     }
 }

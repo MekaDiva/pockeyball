@@ -7,18 +7,19 @@ import Player from "game/player";
 import Ui from "game/ui";
 import Tools from "game/tools";
 
-const skyFloorTexture = process.env.PUBLIC_URL + "/img/sky.jpg";
-
 export const sceneConfiguration = {
     FPS: 60,
 
+    // Debug mode to see the scene
     debug: false,
 
-    // Stage of the game
-    stageGame: {
-        readyStage: 0,
-        playingStage: 1,
-        finishStage: 2,
+    // Data of the game (to be reset)
+    playerData: {
+        // How many score points
+        playerScore: 0,
+
+        // If the player finish the game the score will not be reset
+        isFinishGame: false,
     },
 
     // Whether the scene is ready
@@ -27,14 +28,11 @@ export const sceneConfiguration = {
     // Whether the game is on pause
     isPause: false,
 
-    // The height of the cloud
-    cloudHeight: 100,
-
     // The range of cloud
-    cloudRange: 300,
+    cloudRange: 20,
 
     // The total number of cloud
-    cloudNumber: 50,
+    cloudNumber: 30,
 
     // The range of trees
     treeRange: 100,
@@ -46,13 +44,7 @@ export const sceneConfiguration = {
     brancheNumber: 40,
 
     // The number of obstacles on the path, pay attention to the pathHeight
-    obstacleNumber: 50,
-
-    // Whether the game is started
-    gameStarted: false,
-
-    // How many score points
-    playerScore: 0,
+    obstacleNumber: 30,
 
     // The gravity acceleration of the game
     gravityAcceleration: -9.8,
@@ -67,19 +59,7 @@ export const sceneConfiguration = {
     ballInitialHeight: 3,
 
     // The height of the current level, increases as levels go up
-    pathHeight: 200,
-
-    // How far the player is through the current level, initialises to zero.
-    pathProgress: 0,
-
-    // Whether the level has finished
-    levelOver: false,
-
-    // Gives the completion amount of the course thus far, from 0.0 to 1.0.
-    coursePercentComplete: () => sceneConfiguration.courseProgress / sceneConfiguration.courseLength,
-
-    // Whether the start animation is playing (the circular camera movement while looking at the ship)
-    cameraStartAnimationPlaying: false,
+    pathHeight: 100,
 };
 
 class Game extends THREE.EventDispatcher {
@@ -131,19 +111,30 @@ class Game extends THREE.EventDispatcher {
     }
 
     initEngine() {
+        // Renderer configuration
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.toneMapping = THREE.LinearToneMapping;
+        document.body.appendChild(this.renderer.domElement);
+
         // Scene configuration
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x008011);
-        this.scene.fog = new THREE.Fog(0x008011, 1, 500);
+        this.scene.background = new THREE.Color(0x58d1fe);
+        //this.scene.fog = new THREE.Fog(this.scene.background, 1, 100);
+        if (!sceneConfiguration.debug) {
+            this.scene.fog = new THREE.FogExp2(this.scene.background, 0.02);
+        }
 
         // Light configuration
-        const hemiLight = new THREE.HemisphereLight(0xa1a1a1, 0xa1a1a1, 0.4);
-        hemiLight.color.setHSL(0.6, 1, 0.6);
-        hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-        hemiLight.position.set(10, 50, 10);
-        this.scene.add(hemiLight);
+        // const hemiLight = new THREE.HemisphereLight(0xa1a1a1, 0xa1a1a1, 0.4);
+        // hemiLight.color.setHSL(0.6, 1, 0.6);
+        // hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+        // hemiLight.position.set(10, 50, 10);
+        // this.scene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
         dirLight.color.setHSL(0.1, 1, 0.95);
         dirLight.position.set(1.5, 3, 3);
         dirLight.position.multiplyScalar(30);
@@ -164,21 +155,15 @@ class Game extends THREE.EventDispatcher {
         dirLight.shadow.camera.far = 2500;
         dirLight.shadow.bias = -0.00005;
 
-        // Renderer configuration
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.toneMapping = THREE.LinearToneMapping;
-        document.body.appendChild(this.renderer.domElement);
-
         // Camera
         this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(4, 3, 9);
         this.camera.lookAt(0, 2, 0);
 
-        const axesHelper = new THREE.AxesHelper(3);
-        this.scene.add(axesHelper);
+        if (sceneConfiguration.debug) {
+            const axesHelper = new THREE.AxesHelper(3);
+            this.scene.add(axesHelper);
+        }
 
         if (sceneConfiguration.debug) {
             this.cameraControls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -293,9 +278,6 @@ class Game extends THREE.EventDispatcher {
 
             // console.log(this.renderer.info.render.triangles + " tri");
             // console.log(this.renderer.info.render.calls+ " call");
-
-            if (sceneConfiguration.gameStarted) {
-            }
         }
     }
 
@@ -319,6 +301,13 @@ class Game extends THREE.EventDispatcher {
     reset() {
         console.log("reset");
 
+        // Reset the player data
+        if (!sceneConfiguration.playerData.isFinishGame) {
+            // reset the score
+            sceneConfiguration.playerData.playerScore = 0;
+        }
+        sceneConfiguration.playerData.isFinishGame = false;
+
         // Reset the player
         this.player.reset();
 
@@ -326,6 +315,7 @@ class Game extends THREE.EventDispatcher {
         this.objects.reset();
 
         // Reset the UI
+        Ui.reset();
     }
 
     pause() {

@@ -62,12 +62,19 @@ class Tools {
     }
 
     // Returns the point of a surface centered at vector3Position with side length
-    randomSurfacePoint(vector3Position, length){
+    randomSurfacePoint(vector3Position, width, length, horizontalSurface = true){
         var u = Math.random();
         var v = Math.random();
-        var x = vector3Position.x + (u - 0.5) * length;
-        var y = vector3Position.y;
-        var z = vector3Position.z + (v - 0.5) * length;
+        if (horizontalSurface) {
+            var x = vector3Position.x + (u - 0.5) * width;
+            var y = vector3Position.y;
+            var z = vector3Position.z + (v - 0.5) * length;
+        }
+        else {
+            var x = vector3Position.x + (u - 0.5) * width;
+            var y = vector3Position.y + (v - 0.5) * length;
+            var z = vector3Position.z;
+        }
         return new THREE.Vector3(x, y, z);
      }
 }

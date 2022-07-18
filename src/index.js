@@ -8,7 +8,7 @@ export default class Playable {
         //let game = new Game();
 
         // Start the game after 0.5 seconds
-        gsap.delayedCall(.5, Game.init);
+        gsap.delayedCall(.1, Game.init);
 
     }
 

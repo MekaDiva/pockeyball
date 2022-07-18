@@ -4,6 +4,7 @@ import { FlakesTexture } from "three/examples/jsm/textures/FlakesTexture.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import Game, { sceneConfiguration } from "../game";
 import Tools from "game/tools";
+import Ui from "game/ui";
 
 const beakGlbFilePath = process.env.PUBLIC_URL + "/models/beakWithBall.glb";
 const ballTexturePath = process.env.PUBLIC_URL + "/img/ball.jpg";
@@ -77,6 +78,9 @@ export default class Player extends THREE.Object3D {
         // If the ball stab the target, isCharged is true
         this.isCharged = false;
 
+        // If the ball has passed the final line
+        this.isPassFinalLine = false;
+
         // Actual max speed of the ball
         this.actualBallMaxSpeed = sceneConfiguration.ballMaxInitialSpeed;
 
@@ -105,6 +109,9 @@ export default class Player extends THREE.Object3D {
 
         // The charge image of the ball
         this.chargeOfBall = null;
+
+        // The charge effect of the ball
+        this.chargeEffectObBall = null;
 
         // The effects of successful stab
         this.effectSuccessStab1 = null;
@@ -250,6 +257,15 @@ export default class Player extends THREE.Object3D {
         this.effectFailedStab2 = this.effectFailedStab1.clone();
         this.visualObjectsContainer.add(this.effectFailedStab2);
         this.effectFailedStab2.visible = false;
+
+        // Add the charge effect to the ball
+        this.chargeEffectObBall = this.effectSuccessStab1.clone();
+        var chargeEffectMaterial = effectSuccessMaterial.clone();
+        chargeEffectMaterial.color.set(0xff0000);
+        this.chargeEffectObBall.material = chargeEffectMaterial;
+        this.chargeEffectObBall.position.set(0, 0, 2);
+        this.chargeEffectObBall.visible = false;
+        this.visualObjectsContainer.add(this.chargeEffectObBall);
     }
 
     update() {
@@ -261,43 +277,71 @@ export default class Player extends THREE.Object3D {
                 // If the beak is not attached, update
                 this.mixer.update(this.clock.getDelta());
 
-                if (this.isInteractable) {
-                    if (!this.isAttached) {
-                        let timeDelta = this.clock.elapsedTime - this.t0;
-                        this.ballHeight = sceneConfiguration.gravityAcceleration * 0.5 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
-                        this.ballSpeed = sceneConfiguration.gravityAcceleration * timeDelta + this.v0;
-                        Game.objects.position.set(0, -this.ballHeight, 0);
+                if (!this.isAttached) {
+                    let timeDelta = this.clock.elapsedTime - this.t0;
+                    this.ballHeight = sceneConfiguration.gravityAcceleration * 0.5 * timeDelta * timeDelta + this.v0 * timeDelta + this.h0;
+                    this.ballSpeed = sceneConfiguration.gravityAcceleration * timeDelta + this.v0;
+                    Game.objects.position.set(0, -this.ballHeight, 0);
 
-                        // Activate the track of the ball
-                        this.trackOfBall.visible = true;
-                        this.trackOfBall.scale.set(1, this.ballSpeed, 1);
+                    // Activate the track of the ball
+                    this.trackOfBall.visible = true;
+                    this.trackOfBall.scale.set(1, this.ballSpeed, 1);
 
-                        // Deactivate the charge effect when speed reaches 0
-                        if (this.ballSpeed < 0 && this.isCharged) {
-                            gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
-                            this.trackOfBall.material.color.set(0xffffff);
-                            this.isCharged = false;
-                        }
+                    // Deactivate the charge effect when speed reaches 0
+                    if (this.ballSpeed < 0 && this.isCharged) {
+                        gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+                        this.trackOfBall.material.color.set(0xffffff);
+                        this.isCharged = false;
+                    }
 
-                        // Game over if the ball falls below 2
-                        if (this.ballHeight < 2) {
-                            // Game over
-                            Game.dropBallOnGround();
-                            this.isInteractable = false;
-                            this.playBallDropAnimation();
+                    // Game over if the ball falls below 2
+                    if (this.ballHeight < 2) {
+                        // Game over
+                        Game.dropBallOnGround();
+                        this.isInteractable = false;
+                        this.playBallDropAnimation();
 
-                            // Deactivate the track of the ball
-                            this.trackOfBall.visible = false;
-
-                            // Deactivate the charge effect
-                            gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
-                            this.trackOfBall.material.color.set(0xffffff);
-                            this.isCharged = false;
-                        }
-                    } else {
                         // Deactivate the track of the ball
                         this.trackOfBall.visible = false;
+
+                        // Deactivate the charge effect
+                        gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+                        this.trackOfBall.material.color.set(0xffffff);
+                        this.isCharged = false;
                     }
+
+                    // Game finish if the ball rises above the path length
+                    const finalLineHeight = sceneConfiguration.pathHeight;
+                    //const finalLineHeight = 6;
+                    
+                    if (this.ballHeight > finalLineHeight) {
+                        // Game finish
+                        this.isInteractable = false;
+
+                        var distanceFromFinal = this.ballHeight - finalLineHeight;
+                        var indexMultiplier = Math.floor(distanceFromFinal / 2);
+                        const multiplierArray = ["2", "5", "11", "20"];
+                        Ui.getMultiplier(multiplierArray[indexMultiplier]);
+
+                        // Activate the portal
+                        Game.objects.activatePortal();
+
+                        this.isPassFinalLine = true;
+                    }
+
+                    // If the ball traverse the portal
+                    if (this.isPassFinalLine && this.ballHeight < finalLineHeight - 0.8){
+                        Game.objects.deactivatePortal();
+
+                        this.beakScene.visible = false;
+                        this.isAttached = true;
+
+                        gsap.delayedCall(1.5, Game.reset);
+                    }
+
+                } else {
+                    // Deactivate the track of the ball
+                    this.trackOfBall.visible = false;
                 }
             }
 
@@ -326,6 +370,8 @@ export default class Player extends THREE.Object3D {
         this.beakBendClip.stop();
         this.ballBendClip.stop();
 
+        this.beakScene.visible = true;
+        this.ballMesh.visible = true;
         this.beakMesh.visible = true;
         this.ballMesh.position.y = 0;
         gsap.killTweensOf(this.ballMesh.position);
@@ -336,6 +382,7 @@ export default class Player extends THREE.Object3D {
         this.isInteractable = true;
         this.isAttached = true;
         this.isBeingPressed = false;
+        this.isPassFinalLine = false;
     }
 
     // On pointer down
@@ -372,9 +419,10 @@ export default class Player extends THREE.Object3D {
                     );
 
                     // Move the camera backwards
-                    const cameraBackwardsDistanceMax = 2;
-                    var cameraBackwardsDistance = Tools.lerp(0, cameraBackwardsDistanceMax, factor);
-                    Game.camera.position.z = this.cameraInitialPosition.z + cameraBackwardsDistance;
+                    const cameraBackwardsMultiplierMax = 0.3;
+                    var cameraBackwardsMultiplier = Tools.lerp(0, cameraBackwardsMultiplierMax, factor);
+                    Game.camera.position.x = this.cameraInitialPosition.x * (1 + cameraBackwardsMultiplier);
+                    Game.camera.position.z = this.cameraInitialPosition.z * (1 + cameraBackwardsMultiplier);
                 }
             }
         }
@@ -404,6 +452,9 @@ export default class Player extends THREE.Object3D {
         this.beakBendClip.play();
         this.ballBendClip.play();
 
+        // Deactivate charging effect
+        this.chargeEffectObBall.visible = false;
+
         //////////
         this.isAttached = true;
         this.isBeingPressed = true;
@@ -415,6 +466,11 @@ export default class Player extends THREE.Object3D {
         this.beakBendClip.stop();
         this.ballBendClip.stop();
         this.beakWithdrawClip.stop();
+
+        // Deactivate the charge effect
+        gsap.to(this.chargeOfBall.material, { opacity: 0, duration: 0.3, ease: "power2" });
+        this.trackOfBall.material.color.set(0xffffff);
+        this.isCharged = false;
 
         // Do the raycast check
         var rayOrigin = new THREE.Vector3(0, 0, 1);
@@ -434,6 +490,7 @@ export default class Player extends THREE.Object3D {
                 this.beakStabSuccessClip.reset();
                 this.beakStabSuccessClip.play();
 
+                // Play the shake animation for the beak
                 gsap.fromTo(this.beakScene.rotation, { x: 0.2 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
 
                 // Play the stab success animation
@@ -441,6 +498,9 @@ export default class Player extends THREE.Object3D {
 
                 // Add mark of stab
                 Game.objects.addMarkOfStab();
+
+                // Ui for stab the basic path
+                Ui.stabBasicPath();
 
                 //////////
                 // Stop the ball
@@ -506,11 +566,15 @@ export default class Player extends THREE.Object3D {
                 this.isCharged = false;
 
                 // Add the camera shake animation
-                
+                gsap.fromTo(
+                    Game.camera.position,
+                    { y: this.cameraInitialPosition.y + 0.2 },
+                    { y: this.cameraInitialPosition.y, duration: 0.5, ease: "elastic.out(1, 0.3)" }
+                );
 
                 //////////
                 this.isInteractable = false;
-                this.isAttached = false;
+                this.isAttached = true;
                 this.isBeingPressed = false;
                 break;
             case "targetImg":
@@ -533,9 +597,17 @@ export default class Player extends THREE.Object3D {
                 Game.objects.addMarkOfStab();
 
                 // Play the charge animation
+                this.chargeEffectObBall.visible = true;
+                //this.chargeEffectObBall.rotation.z = Math.random() * Math.PI * 2;
+                gsap.fromTo(this.chargeEffectObBall.rotation, { z: 0 }, { z: Math.PI, duration: 0.5, repeat: -1, ease: "power1" });
+                gsap.fromTo(this.chargeEffectObBall.scale, { x: 1 }, { x: 0.1, duration: 0.5, repeat: -1, ease: "power1" });
+                gsap.fromTo(this.chargeEffectObBall.scale, { y: 1 }, { y: 0.1, duration: 0.5, repeat: -1, ease: "power1" });
+                gsap.fromTo(this.chargeEffectObBall.material, { opacity: 1 }, { opacity: 0, duration: 0.5, repeat: -1, ease: "none" });
 
                 this.isCharged = true;
 
+                // Ui animation for stab the target image
+                Ui.stabTarget();
                 //////////
                 this.isAttached = true;
                 this.isBeingPressed = false;
@@ -550,6 +622,7 @@ export default class Player extends THREE.Object3D {
         //console.log("release");
 
         // Move the camera back to initial position
+        gsap.to(Game.camera.position, { duration: 0.3, x: this.cameraInitialPosition.x, ease: "elastic.out(0.5, 0.5)" });
         gsap.to(Game.camera.position, { duration: 0.3, z: this.cameraInitialPosition.z, ease: "elastic.out(0.5, 0.5)" });
         //Game.camera.position.copy(this.cameraInitialPosition);
 
@@ -600,26 +673,22 @@ export default class Player extends THREE.Object3D {
     playStabSuccessAnimation() {
         this.effectSuccessStab1.visible = true;
         this.effectSuccessStab1.rotation.z = Math.random() * Math.PI * 2;
-        gsap.fromTo(this.effectSuccessStab1.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power1" });
-        gsap.fromTo(this.effectSuccessStab1.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectSuccessStab1.scale, { x: 0.1, y: 0.1 }, { x: 1, y: 1, duration: 0.5, ease: "power1" });
         gsap.fromTo(this.effectSuccessStab1.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
         this.effectSuccessStab2.visible = true;
         this.effectSuccessStab2.rotation.z = Math.random() * Math.PI * 2;
-        gsap.fromTo(this.effectSuccessStab2.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power4" });
-        gsap.fromTo(this.effectSuccessStab2.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectSuccessStab2.scale, { x: 0.1, y: 0.1 }, { x: 1, y: 1, duration: 0.5, ease: "power4" });
         gsap.fromTo(this.effectSuccessStab2.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
     }
 
     playStabFailedAnimation() {
         this.effectFailedStab1.visible = true;
         this.effectFailedStab1.rotation.z = Math.random() * Math.PI * 2;
-        gsap.fromTo(this.effectFailedStab1.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power1" });
-        gsap.fromTo(this.effectFailedStab1.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power1" });
+        gsap.fromTo(this.effectFailedStab1.scale, { x: 0.1, y: 0.1 }, { x: 1, y: 1, duration: 0.5, ease: "power1" });
         gsap.fromTo(this.effectFailedStab1.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
         this.effectFailedStab2.visible = true;
         this.effectFailedStab2.rotation.z = Math.random() * Math.PI * 2;
-        gsap.fromTo(this.effectFailedStab2.scale, { x: 0.1 }, { x: 1, duration: 0.5, ease: "power4" });
-        gsap.fromTo(this.effectFailedStab2.scale, { y: 0.1 }, { y: 1, duration: 0.5, ease: "power4" });
+        gsap.fromTo(this.effectFailedStab2.scale, { x: 0.1, y: 0.1 }, { x: 1, y: 1, duration: 0.5, ease: "power4" });
         gsap.fromTo(this.effectFailedStab2.material, { opacity: 1 }, { opacity: 0, duration: 0.5, ease: "none" });
     }
 }
