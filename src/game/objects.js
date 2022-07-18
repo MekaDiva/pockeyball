@@ -105,7 +105,7 @@ export default class Objects extends THREE.Object3D {
         Game.scene.visible = true;
 
         // Load all the glb object meshes
-        const cloudMaterial = new THREE.MeshToonMaterial({ color: 0xffffff });
+        const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.1 });
 
         this.cloud0 = await this.addGlbModel(cloud0GlbPath, cloudMaterial, this.cloudArray);
         this.cloud0.receiveShadow = false;
